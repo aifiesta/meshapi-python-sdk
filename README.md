@@ -1,6 +1,6 @@
-# routersvc-python-sdk
+# meshapi-python-sdk
 
-Python SDK for the RouterSVC AI model gateway.
+Python SDK for the MeshAPI AI model gateway.
 
 ## Requirements
 
@@ -11,7 +11,7 @@ Python SDK for the RouterSVC AI model gateway.
 ## Installation
 
 ```bash
-pip install routersvc-python-sdk
+pip install meshapi-python-sdk
 # or from source:
 pip install -e ".[dev]"
 ```
@@ -21,7 +21,7 @@ pip install -e ".[dev]"
 ### Sync client
 
 ```python
-from routersvc import MeshAPI, ChatCompletionParams, ChatMessage
+from meshapi import MeshAPI, ChatCompletionParams, ChatMessage
 
 client = MeshAPI(base_url="http://localhost:8000", token="rsk_...")
 
@@ -49,7 +49,7 @@ for chunk in client.chat.completions.stream(
 
 ```python
 import asyncio
-from routersvc import AsyncMeshAPI, ChatCompletionParams, ChatMessage
+from meshapi import AsyncMeshAPI, ChatCompletionParams, ChatMessage
 
 async def main():
     async with AsyncMeshAPI(base_url="http://localhost:8000", token="rsk_...") as client:
@@ -76,7 +76,7 @@ filtered = client.models.list(free=True)
 ### Templates
 
 ```python
-from routersvc import CreateTemplateParams, UpdateTemplateParams
+from meshapi import CreateTemplateParams, UpdateTemplateParams
 
 tmpl = client.templates.create(CreateTemplateParams(
     name="my-assistant",
@@ -93,11 +93,11 @@ client.templates.delete(tmpl.id)
 ## Error Handling
 
 ```python
-from routersvc import RouterSvcApiError
+from meshapi import MeshAPIError
 
 try:
     resp = client.chat.completions.create(...)
-except RouterSvcApiError as e:
+except MeshAPIError as e:
     print(e.status)            # HTTP status code (0 for stream errors)
     print(e.error_code)        # "unauthorized", "rate_limit_exceeded", etc.
     print(e.request_id)        # req_<ULID> for support tracing
@@ -124,14 +124,14 @@ client = MeshAPI(
 
 ## Streaming Failure Recovery
 
-**Streams do not retry.** If a connection drops mid-stream, a `RouterSvcApiError`
+**Streams do not retry.** If a connection drops mid-stream, a `MeshAPIError`
 with `error_code="stream_interrupted"` is raised. Catch it and restart a new request:
 
 ```python
 try:
     for chunk in client.chat.completions.stream(params):
         process(chunk)
-except RouterSvcApiError as e:
+except MeshAPIError as e:
     if e.error_code == "stream_interrupted":
         # restart from scratch
         ...
@@ -156,8 +156,8 @@ mgmt_client = MeshAPI(base_url=BASE_URL, token="<jwt>")
 pytest tests/unit/ tests/contract/ -v
 
 # Integration tests (requires localhost:8000)
-ROUTERSVC_BASE_URL=http://localhost:8000 \
-ROUTERSVC_TOKEN=rsk_... \
+MESHAPI_BASE_URL=http://localhost:8000 \
+MESHAPI_TOKEN=rsk_... \
 pytest tests/integration/ -v
 
 # Build wheel (tests excluded)
@@ -171,6 +171,6 @@ This SDK follows [SemVer 2.0](https://semver.org/). Pre-1.0 releases may have
 breaking changes between minor versions.
 
 ```python
-import routersvc
-print(routersvc.__version__)  # "0.1.0"
+import meshapi
+print(meshapi.__version__)  # "0.1.0"
 ```

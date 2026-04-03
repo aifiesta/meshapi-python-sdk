@@ -11,13 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from routersvc._types import (
+from meshapi._types import (
     ChatCompletionChunk,
     ChatCompletionResponse,
     ModelInfo,
     TemplateSummary,
 )
-from routersvc._errors import RouterSvcApiError
+from meshapi._errors import MeshAPIError
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 
@@ -141,8 +141,8 @@ def test_error_429_has_retry_after():
     assert data["error"]["retry_after_seconds"] == 5
 
 
-def test_all_error_codes_map_to_routersvc_api_error():
-    """RouterSvcApiError.from_response handles every documented error code."""
+def test_all_error_codes_map_to_meshapi_api_error():
+    """MeshAPIError.from_response handles every documented error code."""
     from unittest.mock import MagicMock
 
     codes = [
@@ -157,7 +157,7 @@ def test_all_error_codes_map_to_routersvc_api_error():
         mock.headers = {"content-type": "application/json", "x-request-id": ""}
         mock.json.return_value = data
         mock.text = json.dumps(data)
-        err = RouterSvcApiError.from_response(mock)
-        assert isinstance(err, RouterSvcApiError)
+        err = MeshAPIError.from_response(mock)
+        assert isinstance(err, MeshAPIError)
         assert err.status == status
         assert err.error_code == data["error"]["code"]

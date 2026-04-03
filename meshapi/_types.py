@@ -1,4 +1,4 @@
-"""Domain types for RouterSVC SDK — all Pydantic v2 models."""
+"""Domain types for MeshAPI SDK — all Pydantic v2 models."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ class ChatCompletionParams(BaseModel):
     model: Optional[str] = None
     stream: Optional[bool] = None
 
-    # RouterSVC extensions
+    # MeshAPI extensions
     template: Optional[str] = None
     variables: Optional[Dict[str, str]] = None
     session_id: Optional[str] = None

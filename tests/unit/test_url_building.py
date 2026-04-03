@@ -2,7 +2,7 @@
 
 import pytest
 
-from routersvc._http import MeshAPIConfig, SyncHttpClient
+from meshapi._http import MeshAPIConfig, SyncHttpClient
 
 
 def make_client(base_url: str = "http://localhost:8000") -> SyncHttpClient:
@@ -35,13 +35,13 @@ def test_headers_content_type():
 def test_headers_sdk_version():
     client = make_client()
     headers = client._headers()
-    assert "X-RouterSVC-SDK" in headers
-    assert headers["X-RouterSVC-SDK"].startswith("python/")
+    assert "X-MeshAPI-SDK" in headers
+    assert headers["X-MeshAPI-SDK"].startswith("python/")
 
 
 def test_models_free_query_param():
     """Verify free=True serialises to 'true' (lowercase), not 'True'."""
-    from routersvc.resources.models import ModelsResource
+    from meshapi.resources.models import ModelsResource
     from unittest.mock import MagicMock, patch
 
     mock_http = MagicMock()
@@ -52,7 +52,7 @@ def test_models_free_query_param():
 
 
 def test_models_paid_query_param():
-    from routersvc.resources.models import ModelsResource
+    from meshapi.resources.models import ModelsResource
     from unittest.mock import MagicMock
 
     mock_http = MagicMock()
@@ -63,7 +63,7 @@ def test_models_paid_query_param():
 
 
 def test_models_no_filter_no_params():
-    from routersvc.resources.models import ModelsResource
+    from meshapi.resources.models import ModelsResource
     from unittest.mock import MagicMock
 
     mock_http = MagicMock()
@@ -74,9 +74,9 @@ def test_models_no_filter_no_params():
 
 
 def test_template_get_path():
-    from routersvc.resources.templates import TemplatesResource
+    from meshapi.resources.templates import TemplatesResource
     from unittest.mock import MagicMock
-    from routersvc._types import TemplateSummary
+    from meshapi._types import TemplateSummary
 
     mock_http = MagicMock()
     mock_http.get.return_value = {
@@ -89,7 +89,7 @@ def test_template_get_path():
 
 
 def test_template_delete_path():
-    from routersvc.resources.templates import TemplatesResource
+    from meshapi.resources.templates import TemplatesResource
     from unittest.mock import MagicMock
 
     mock_http = MagicMock()

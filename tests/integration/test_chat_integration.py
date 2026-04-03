@@ -4,16 +4,16 @@ import os
 
 import pytest
 
-from routersvc import MeshAPI
-from routersvc._types import (
+from meshapi import MeshAPI
+from meshapi._types import (
     ChatCompletionChunk,
     ChatCompletionParams,
     ChatCompletionResponse,
     ChatMessage,
 )
 
-BASE_URL = os.getenv("ROUTERSVC_BASE_URL", "http://localhost:8000")
-TOKEN = os.getenv("ROUTERSVC_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
+BASE_URL = os.getenv("MESHAPI_BASE_URL", "http://localhost:8000")
+TOKEN = os.getenv("MESHAPI_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
 MODEL = "openai/gpt-4o-mini"
 
 

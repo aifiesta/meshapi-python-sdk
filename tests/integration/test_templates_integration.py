@@ -5,12 +5,12 @@ import uuid
 
 import pytest
 
-from routersvc import MeshAPI
-from routersvc._errors import RouterSvcApiError
-from routersvc._types import CreateTemplateParams, TemplateSummary, UpdateTemplateParams
+from meshapi import MeshAPI
+from meshapi._errors import MeshAPIError
+from meshapi._types import CreateTemplateParams, TemplateSummary, UpdateTemplateParams
 
-BASE_URL = os.getenv("ROUTERSVC_BASE_URL", "http://localhost:8000")
-TOKEN = os.getenv("ROUTERSVC_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
+BASE_URL = os.getenv("MESHAPI_BASE_URL", "http://localhost:8000")
+TOKEN = os.getenv("MESHAPI_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +33,7 @@ def created_template(client: MeshAPI):
     # Cleanup
     try:
         client.templates.delete(tmpl.id)
-    except RouterSvcApiError:
+    except MeshAPIError:
         pass
 
 
@@ -68,6 +68,6 @@ def test_template_delete(client: MeshAPI):
     unique_name = f"sdk-del-{uuid.uuid4().hex[:8]}"
     tmpl = client.templates.create(CreateTemplateParams(name=unique_name))
     client.templates.delete(tmpl.id)
-    with pytest.raises(RouterSvcApiError) as exc_info:
+    with pytest.raises(MeshAPIError) as exc_info:
         client.templates.get(tmpl.id)
     assert exc_info.value.status == 404

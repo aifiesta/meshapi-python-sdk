@@ -4,7 +4,7 @@ Tests verify:
 - Correct chunk parsing from well-formed frames
 - Remainder-buffer handling across TCP-fragmented input
 - [DONE] sentinel terminates iteration
-- Mid-stream error frames raise RouterSvcApiError
+- Mid-stream error frames raise MeshAPIError
 """
 
 import json
@@ -13,9 +13,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from routersvc._errors import RouterSvcApiError
-from routersvc._http import _try_parse_sse_frame, _iter_sse
-from routersvc._types import ChatCompletionChunk
+from meshapi._errors import MeshAPIError
+from meshapi._http import _try_parse_sse_frame, _iter_sse
+from meshapi._types import ChatCompletionChunk
 
 
 def make_chunk(content: str, index: int = 0) -> dict:
@@ -52,7 +52,7 @@ def test_parse_valid_chunk():
 
 
 def test_parse_done_frame_returns_sentinel():
-    from routersvc._http import _DONE_SENTINEL
+    from meshapi._http import _DONE_SENTINEL
     assert _try_parse_sse_frame("data: [DONE]") is _DONE_SENTINEL
 
 
@@ -68,7 +68,7 @@ def test_parse_invalid_json_returns_none():
 def test_parse_error_frame_raises():
     error_payload = {"error": {"code": "upstream_error", "message": "Provider failed"}}
     frame = f"data: {json.dumps(error_payload)}"
-    with pytest.raises(RouterSvcApiError) as exc_info:
+    with pytest.raises(MeshAPIError) as exc_info:
         _try_parse_sse_frame(frame)
     err = exc_info.value
     assert err.error_code == "upstream_error"
@@ -131,7 +131,7 @@ def test_iter_sse_tcp_fragmented():
 
 
 def test_iter_sse_mid_stream_error():
-    """An error frame in the middle of a stream raises RouterSvcApiError."""
+    """An error frame in the middle of a stream raises MeshAPIError."""
     chunk1 = make_chunk("Part 1")
     error_payload = {"error": {"code": "upstream_error", "message": "Server died"}}
     raw = make_sse_frame(chunk1) + make_sse_frame(error_payload)
@@ -141,7 +141,7 @@ def test_iter_sse_mid_stream_error():
     first = next(gen)
     assert first.choices[0].delta.content == "Part 1"
 
-    with pytest.raises(RouterSvcApiError) as exc_info:
+    with pytest.raises(MeshAPIError) as exc_info:
         next(gen)
     assert exc_info.value.error_code == "upstream_error"
 

@@ -22,7 +22,7 @@ class CompletionsResource:
     def stream(self, params: ChatCompletionParams) -> Iterator[ChatCompletionChunk]:
         """Streaming completion. Returns an iterator of SSE chunks.
 
-        Streams do NOT retry on failure. Catch RouterSvcApiError and
+        Streams do NOT retry on failure. Catch MeshAPIApiError and
         restart a new request if reconnection is needed.
         """
         body = params.model_dump(exclude_none=True)
@@ -49,7 +49,7 @@ class AsyncCompletionsResource:
     async def stream(self, params: ChatCompletionParams) -> AsyncIterator[ChatCompletionChunk]:
         """Streaming completion. Returns an async iterator of SSE chunks.
 
-        Streams do NOT retry on failure. Catch RouterSvcApiError and
+        Streams do NOT retry on failure. Catch MeshAPIApiError and
         restart a new request if reconnection is needed.
         """
         body = params.model_dump(exclude_none=True)

@@ -1,10 +1,10 @@
-"""RouterSVC Python SDK."""
+"""MeshAPI Python SDK."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from ._errors import RouterSvcApiError
+from ._errors import MeshAPIError
 from ._http import AsyncHttpClient, MeshAPIConfig, SyncHttpClient
 from ._types import (
     ApiErrorBody,
@@ -47,7 +47,7 @@ __all__ = [
     "MeshAPI",
     "AsyncMeshAPI",
     "MeshAPIConfig",
-    "RouterSvcApiError",
+    "MeshAPIError",
     # types
     "ChatRole",
     "ChatMessage",
@@ -82,14 +82,14 @@ __all__ = [
 
 
 class MeshAPI:
-    """Synchronous RouterSVC client.
+    """Synchronous MeshAPI client.
 
     One instance = one auth realm. Use separate instances for different tokens
     (e.g., ``rsk_`` key for inference, JWT for template management).
 
     Example::
 
-        from routersvc import MeshAPI, ChatCompletionParams, ChatMessage
+        from meshapi import MeshAPI, ChatCompletionParams, ChatMessage
 
         client = MeshAPI(base_url="http://localhost:8000", token="rsk_...")
         resp = client.chat.completions.create(
@@ -134,12 +134,12 @@ class MeshAPI:
 
 
 class AsyncMeshAPI:
-    """Asynchronous RouterSVC client.
+    """Asynchronous MeshAPI client.
 
     Example::
 
         import asyncio
-        from routersvc import AsyncMeshAPI, ChatCompletionParams, ChatMessage
+        from meshapi import AsyncMeshAPI, ChatCompletionParams, ChatMessage
 
         async def main():
             async with AsyncMeshAPI(base_url="http://localhost:8000", token="rsk_...") as client:

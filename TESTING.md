@@ -1,4 +1,4 @@
-# Testing the RouterSVC Python SDK
+# Testing the MeshAPI Python SDK
 
 This document describes the different types of tests available in the Python SDK and how to run them.
 
@@ -26,7 +26,7 @@ pytest tests/unit/ -v
 ```
 
 ### 2.2 Contract Tests
-Located in `tests/contract/`. These tests ensure that our internal Pydantic models correctly parse and validate JSON responses that follow the RouterSVC API schema. They use local JSON fixtures and do not require a network.
+Located in `tests/contract/`. These tests ensure that our internal Pydantic models correctly parse and validate JSON responses that follow the MeshAPI API schema. They use local JSON fixtures and do not require a network.
 
 **To run contract tests:**
 ```bash
@@ -34,31 +34,31 @@ pytest tests/contract/ -v
 ```
 
 ### 2.3 Integration Tests
-Located in `tests/integration/`. These tests perform real HTTP requests against a running RouterSVC instance. They verify that the SDK correctly interacts with all endpoints (Chat, Models, Templates).
+Located in `tests/integration/`. These tests perform real HTTP requests against a running MeshAPI instance. They verify that the SDK correctly interacts with all endpoints (Chat, Models, Templates).
 
 **Prerequisites:**
-- A running RouterSVC instance (default: `http://localhost:8000`).
+- A running MeshAPI instance (default: `http://localhost:8000`).
 - A valid Data-plane API key (`rsk_...`).
 
 **Environment Variables:**
 | Variable | Description | Default |
 | :--- | :--- | :--- |
-| `ROUTERSVC_BASE_URL` | The URL of the API gateway | `http://localhost:8000` |
-| `ROUTERSVC_TOKEN` | A valid API key | (preset in code for dev) |
+| `MESHAPI_BASE_URL` | The URL of the API gateway | `http://localhost:8000` |
+| `MESHAPI_TOKEN` | A valid API key | (preset in code for dev) |
 
 **To run integration tests:**
 ```bash
-ROUTERSVC_BASE_URL=http://localhost:8000 ROUTERSVC_TOKEN=your_rsk_key pytest tests/integration/ -v
+MESHAPI_BASE_URL=http://localhost:8000 MESHAPI_TOKEN=your_rsk_key pytest tests/integration/ -v
 ```
 
 ---
 
 ## 3. Live Tests (Standalone)
 
-Located in the separate `routersvc-python-livetest/` directory. These are standalone scripts designed for quick, manual verification of the SDK against a live server.
+Located in the separate `meshapi-python-livetest/` directory. These are standalone scripts designed for quick, manual verification of the SDK against a live server.
 
 **To run live tests:**
-1. Navigate to the directory: `cd ../routersvc-python-livetest`
+1. Navigate to the directory: `cd ../meshapi-python-livetest`
 2. Configure the server and token in `config.py`.
 3. Run individual scripts:
 ```bash

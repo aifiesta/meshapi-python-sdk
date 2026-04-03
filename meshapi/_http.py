@@ -12,7 +12,7 @@ from typing import Any, AsyncIterator, Dict, Iterator, Optional, Set, Type, Type
 
 import httpx
 
-from ._errors import RouterSvcApiError
+from ._errors import MeshAPIError
 from ._types import ChatCompletionChunk
 
 T = TypeVar("T")
@@ -23,7 +23,7 @@ _DEFAULT_MAX_RETRIES = 3
 _BACKOFF_BASE_MS = 500
 _BACKOFF_MAX_MS = 30_000
 
-_SDK_VERSION_HEADER = "X-RouterSVC-SDK"
+_SDK_VERSION_HEADER = "X-MeshAPI-SDK"
 _SDK_VERSION_VALUE = "python/0.1.0"
 
 
@@ -56,7 +56,7 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
         _DONE_SENTINEL when [DONE] is received (caller should stop iteration)
         None for empty / comment-only frames
     Raises:
-        RouterSvcApiError on mid-stream error frames
+        MeshAPIError on mid-stream error frames
     """
     data_line: Optional[str] = None
     for line in frame.splitlines():
@@ -73,7 +73,7 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
 
     if isinstance(parsed, dict) and "error" in parsed:
         err = parsed["error"]
-        raise RouterSvcApiError(
+        raise MeshAPIError(
             err.get("message", "upstream error"),
             status=0,
             error_code=err.get("code", "upstream_error"),
@@ -103,9 +103,9 @@ def _iter_sse(response: httpx.Response) -> Iterator[ChatCompletionChunk]:
                 if result is not None:
                     yield result  # type: ignore[misc]
     except httpx.RemoteProtocolError as exc:
-        raise RouterSvcApiError.stream_interrupted(str(exc)) from exc
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
     except httpx.StreamError as exc:
-        raise RouterSvcApiError.stream_interrupted(str(exc)) from exc
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
 
 
 async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionChunk]:
@@ -128,9 +128,9 @@ async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionCh
                 if result is not None:
                     yield result  # type: ignore[misc]
     except httpx.RemoteProtocolError as exc:
-        raise RouterSvcApiError.stream_interrupted(str(exc)) from exc
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
     except httpx.StreamError as exc:
-        raise RouterSvcApiError.stream_interrupted(str(exc)) from exc
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ def _retry_after_from_response(response: httpx.Response) -> Optional[int]:
 def _raise_for_status(response: httpx.Response) -> None:
     if response.status_code < 400:
         return
-    raise RouterSvcApiError.from_response(response)
+    raise MeshAPIError.from_response(response)
 
 
 # ---------------------------------------------------------------------------

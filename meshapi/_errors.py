@@ -1,4 +1,4 @@
-"""RouterSVC API error type."""
+"""MeshAPI API error type."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ if TYPE_CHECKING:
     import httpx
 
 
-class RouterSvcApiError(Exception):
-    """Raised when RouterSVC returns a non-2xx response or a mid-stream error."""
+class MeshAPIError(Exception):
+    """Raised when MeshAPI returns a non-2xx response or a mid-stream error."""
 
     status: int
     error_code: str
@@ -39,15 +39,15 @@ class RouterSvcApiError(Exception):
 
     def __repr__(self) -> str:
         return (
-            f"RouterSvcApiError(status={self.status!r}, "
+            f"MeshAPIError(status={self.status!r}, "
             f"error_code={self.error_code!r}, "
             f"request_id={self.request_id!r}, "
             f"message={str(self)!r})"
         )
 
     @classmethod
-    def from_response(cls, response: "httpx.Response") -> "RouterSvcApiError":
-        """Parse a RouterSvcApiError from an httpx Response."""
+    def from_response(cls, response: "httpx.Response") -> "MeshAPIError":
+        """Parse a MeshAPIError from an httpx Response."""
         status = response.status_code
         content_type = response.headers.get("content-type", "")
         request_id = response.headers.get("x-request-id", "")
@@ -84,7 +84,7 @@ class RouterSvcApiError(Exception):
             )
 
     @classmethod
-    def stream_interrupted(cls, cause: str) -> "RouterSvcApiError":
+    def stream_interrupted(cls, cause: str) -> "MeshAPIError":
         """Create an error representing a mid-stream connection failure."""
         return cls(
             f"Stream interrupted: {cause}",

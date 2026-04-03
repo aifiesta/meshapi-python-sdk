@@ -1,10 +1,10 @@
 """Integration tests — models endpoints.
 
 These tests import from the installed package (pip install -e .)
-and run against a live RouterSVC server.
+and run against a live MeshAPI server.
 
 Run: pytest tests/integration/ -v --base-url=http://localhost:8000 --token=rsk_...
-     or set env vars ROUTERSVC_BASE_URL and ROUTERSVC_TOKEN.
+     or set env vars MESHAPI_BASE_URL and MESHAPI_TOKEN.
 """
 
 import os
@@ -12,12 +12,12 @@ import os
 import pytest
 
 # Import from the installed package, not raw source
-from routersvc import MeshAPI
-from routersvc._types import ModelInfo
+from meshapi import MeshAPI
+from meshapi._types import ModelInfo
 
 
-BASE_URL = os.getenv("ROUTERSVC_BASE_URL", "http://localhost:8000")
-TOKEN = os.getenv("ROUTERSVC_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
+BASE_URL = os.getenv("MESHAPI_BASE_URL", "http://localhost:8000")
+TOKEN = os.getenv("MESHAPI_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
 
 
 @pytest.fixture(scope="module")
