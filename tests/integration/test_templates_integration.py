@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from routersvc import RouterSvcClient
+from routersvc import MeshAPI
 from routersvc._errors import RouterSvcApiError
 from routersvc._types import CreateTemplateParams, TemplateSummary, UpdateTemplateParams
 
@@ -15,12 +15,12 @@ TOKEN = os.getenv("ROUTERSVC_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
 
 @pytest.fixture(scope="module")
 def client():
-    with RouterSvcClient(base_url=BASE_URL, token=TOKEN) as c:
+    with MeshAPI(base_url=BASE_URL, token=TOKEN) as c:
         yield c
 
 
 @pytest.fixture
-def created_template(client: RouterSvcClient):
+def created_template(client: MeshAPI):
     unique_name = f"sdk-test-{uuid.uuid4().hex[:8]}"
     tmpl = client.templates.create(
         CreateTemplateParams(
@@ -43,19 +43,19 @@ def test_template_create(created_template: TemplateSummary):
     assert created_template.system == "You are a test assistant."
 
 
-def test_template_list_includes_created(client: RouterSvcClient, created_template: TemplateSummary):
+def test_template_list_includes_created(client: MeshAPI, created_template: TemplateSummary):
     templates = client.templates.list()
     ids = [t.id for t in templates]
     assert created_template.id in ids
 
 
-def test_template_get(client: RouterSvcClient, created_template: TemplateSummary):
+def test_template_get(client: MeshAPI, created_template: TemplateSummary):
     tmpl = client.templates.get(created_template.id)
     assert tmpl.id == created_template.id
     assert tmpl.name == created_template.name
 
 
-def test_template_update(client: RouterSvcClient, created_template: TemplateSummary):
+def test_template_update(client: MeshAPI, created_template: TemplateSummary):
     updated = client.templates.update(
         created_template.id,
         UpdateTemplateParams(description="Updated description"),
@@ -64,7 +64,7 @@ def test_template_update(client: RouterSvcClient, created_template: TemplateSumm
     assert updated.id == created_template.id
 
 
-def test_template_delete(client: RouterSvcClient):
+def test_template_delete(client: MeshAPI):
     unique_name = f"sdk-del-{uuid.uuid4().hex[:8]}"
     tmpl = client.templates.create(CreateTemplateParams(name=unique_name))
     client.templates.delete(tmpl.id)

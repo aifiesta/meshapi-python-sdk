@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from routersvc import RouterSvcClient
+from routersvc import MeshAPI
 from routersvc._types import (
     ChatCompletionChunk,
     ChatCompletionParams,
@@ -19,11 +19,11 @@ MODEL = "openai/gpt-4o-mini"
 
 @pytest.fixture(scope="module")
 def client():
-    with RouterSvcClient(base_url=BASE_URL, token=TOKEN) as c:
+    with MeshAPI(base_url=BASE_URL, token=TOKEN) as c:
         yield c
 
 
-def test_chat_non_streaming(client: RouterSvcClient):
+def test_chat_non_streaming(client: MeshAPI):
     params = ChatCompletionParams(
         model=MODEL,
         messages=[ChatMessage(role="user", content="Say 'pong' and nothing else.")],
@@ -38,7 +38,7 @@ def test_chat_non_streaming(client: RouterSvcClient):
     assert choice.message.content is not None
 
 
-def test_chat_streaming(client: RouterSvcClient):
+def test_chat_streaming(client: MeshAPI):
     params = ChatCompletionParams(
         model=MODEL,
         messages=[ChatMessage(role="user", content="Count from 1 to 3.")],

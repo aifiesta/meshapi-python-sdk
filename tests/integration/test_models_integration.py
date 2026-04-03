@@ -12,7 +12,7 @@ import os
 import pytest
 
 # Import from the installed package, not raw source
-from routersvc import RouterSvcClient
+from routersvc import MeshAPI
 from routersvc._types import ModelInfo
 
 
@@ -22,11 +22,11 @@ TOKEN = os.getenv("ROUTERSVC_TOKEN", "rsk_01KN96KQWDPF2X1E9CP8567JY4")
 
 @pytest.fixture(scope="module")
 def client():
-    with RouterSvcClient(base_url=BASE_URL, token=TOKEN) as c:
+    with MeshAPI(base_url=BASE_URL, token=TOKEN) as c:
         yield c
 
 
-def test_models_list_returns_list(client: RouterSvcClient):
+def test_models_list_returns_list(client: MeshAPI):
     models = client.models.list()
     assert isinstance(models, list)
     for m in models:
@@ -35,21 +35,21 @@ def test_models_list_returns_list(client: RouterSvcClient):
         assert isinstance(m.is_free, bool)
 
 
-def test_models_free_returns_only_free(client: RouterSvcClient):
+def test_models_free_returns_only_free(client: MeshAPI):
     models = client.models.free()
     assert isinstance(models, list)
     for m in models:
         assert m.is_free is True
 
 
-def test_models_paid_returns_only_paid(client: RouterSvcClient):
+def test_models_paid_returns_only_paid(client: MeshAPI):
     models = client.models.paid()
     assert isinstance(models, list)
     for m in models:
         assert m.is_free is False
 
 
-def test_models_list_with_free_filter(client: RouterSvcClient):
+def test_models_list_with_free_filter(client: MeshAPI):
     free_models = client.models.list(free=True)
     paid_models = client.models.list(free=False)
     for m in free_models:
