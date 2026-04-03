@@ -1,0 +1,16 @@
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion.chunk",
+  "created": 1712345678,
+  "model": "openai/gpt-4o-mini",
+  "choices": [],
+  "usage": {
+    "prompt_tokens": 14,
+    "completion_tokens": 7,
+    "total_tokens": 21,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "cost": "0.0000021"
+}

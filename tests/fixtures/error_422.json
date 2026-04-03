@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": "validation_error",
+    "message": "Request validation failed.",
+    "details": [
+      {
+        "type": "missing",
+        "loc": ["body", "messages"],
+        "msg": "Field required"
+      }
+    ]
+  },
+  "request_id": "req_01HZABC"
+}
