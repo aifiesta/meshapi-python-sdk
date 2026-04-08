@@ -258,6 +258,81 @@ class TemplateSummary(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Responses
+# ---------------------------------------------------------------------------
+
+
+class ReasoningConfig(BaseModel):
+    """Controls chain-of-thought reasoning depth for supported models."""
+
+    model_config = ConfigDict(extra="ignore")
+    effort: Literal["minimal", "low", "medium", "high"]
+
+
+class ResponsesParams(BaseModel):
+    """Request body for POST /v1/responses."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    input: Union[str, List[ChatMessage]]
+    model: Optional[str] = None
+
+    # MeshAPI extension — stripped before forwarding to upstream
+    session_id: Optional[str] = None
+
+    # Streaming
+    stream: Optional[bool] = None
+
+    # Inference params
+    max_output_tokens: Optional[int] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    seed: Optional[int] = None
+
+    # Responses API-specific
+    reasoning: Optional[ReasoningConfig] = None
+    tools: Optional[List[Tool]] = None
+    tool_choice: Optional[ToolChoice] = None
+    response_format: Optional[Dict[str, Any]] = None
+    plugins: Optional[List[Dict[str, Any]]] = None
+
+    user: Optional[str] = None
+
+
+class ResponsesMessageReasoning(BaseModel):
+    """Reasoning trace returned by the model when reasoning was enabled."""
+
+    model_config = ConfigDict(extra="ignore")
+    encrypted_content: Optional[str] = None
+    summary: Optional[str] = None
+
+
+class ResponsesMessage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    role: str
+    content: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
+    reasoning: Optional[ResponsesMessageReasoning] = None
+
+
+class ResponsesChoice(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    index: int
+    message: Optional[ResponsesMessage] = None
+    finish_reason: Optional[str] = None
+
+
+class ResponsesResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    object: str
+    created: int
+    model: str
+    choices: List[ResponsesChoice]
+    usage: Optional[UsageInfo] = None
+
+
+# ---------------------------------------------------------------------------
 # Error wire format
 # ---------------------------------------------------------------------------
 

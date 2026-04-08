@@ -26,6 +26,12 @@ from ._types import (
     ListModelsParams,
     ModelInfo,
     ModelPricing,
+    ReasoningConfig,
+    ResponsesChoice,
+    ResponsesMessage,
+    ResponsesMessageReasoning,
+    ResponsesParams,
+    ResponsesResponse,
     TemplateSummary,
     Tool,
     ToolCall,
@@ -39,6 +45,7 @@ from ._types import (
 )
 from .resources.chat import AsyncChatResource, ChatResource
 from .resources.models import AsyncModelsResource, ModelsResource
+from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
 __version__ = "0.1.0"
@@ -78,6 +85,13 @@ __all__ = [
     "TemplateSummary",
     "ApiErrorBody",
     "ApiErrorEnvelope",
+    # responses
+    "ReasoningConfig",
+    "ResponsesParams",
+    "ResponsesResponse",
+    "ResponsesChoice",
+    "ResponsesMessage",
+    "ResponsesMessageReasoning",
 ]
 
 
@@ -120,6 +134,7 @@ class MeshAPI:
         http = SyncHttpClient(config)
         self.chat = ChatResource(http)
         self.models = ModelsResource(http)
+        self.responses = ResponsesResource(http)
         self.templates = TemplatesResource(http)
         self._http = http
 
@@ -171,6 +186,7 @@ class AsyncMeshAPI:
         http = AsyncHttpClient(config)
         self.chat = AsyncChatResource(http)
         self.models = AsyncModelsResource(http)
+        self.responses = AsyncResponsesResource(http)
         self.templates = AsyncTemplatesResource(http)
         self._http = http
 
