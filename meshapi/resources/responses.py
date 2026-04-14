@@ -17,6 +17,9 @@ class ResponsesResource:
 
         Example::
 
+            from meshapi import MeshAPI, ReasoningConfig, ResponsesParams
+
+            client = MeshAPI(base_url="http://localhost:8000", token="rsk_...")
             response = client.responses.create(
                 ResponsesParams(
                     model="openai/o4-mini",
@@ -41,6 +44,9 @@ class ResponsesResource:
 
         Example::
 
+            from meshapi import MeshAPI, ChatMessage, ResponsesParams
+
+            client = MeshAPI(base_url="http://localhost:8000", token="rsk_...")
             for chunk in client.responses.stream(
                 ResponsesParams(
                     model="openai/o4-mini",
@@ -63,14 +69,17 @@ class AsyncResponsesResource:
 
         Example::
 
-            response = await client.responses.create(
-                ResponsesParams(
-                    model="openai/o4-mini",
-                    input="Explain the halting problem simply.",
-                    reasoning=ReasoningConfig(effort="medium"),
+            from meshapi import AsyncMeshAPI, ReasoningConfig, ResponsesParams
+
+            async with AsyncMeshAPI(base_url="http://localhost:8000", token="rsk_...") as client:
+                response = await client.responses.create(
+                    ResponsesParams(
+                        model="openai/o4-mini",
+                        input="Explain the halting problem simply.",
+                        reasoning=ReasoningConfig(effort="medium"),
+                    )
                 )
-            )
-            print(response.choices[0].message.content)
+                print(response.choices[0].message.content)
         """
         body = params.model_dump(exclude_none=True)
         body["stream"] = False
@@ -82,13 +91,16 @@ class AsyncResponsesResource:
 
         Example::
 
-            async for chunk in client.responses.stream(
-                ResponsesParams(
-                    model="openai/o4-mini",
-                    input=[ChatMessage(role="user", content="Tell me a story.")],
-                )
-            ):
-                print(chunk.choices[0].delta.content or "", end="", flush=True)
+            from meshapi import AsyncMeshAPI, ChatMessage, ResponsesParams
+
+            async with AsyncMeshAPI(base_url="http://localhost:8000", token="rsk_...") as client:
+                async for chunk in client.responses.stream(
+                    ResponsesParams(
+                        model="openai/o4-mini",
+                        input=[ChatMessage(role="user", content="Tell me a story.")],
+                    )
+                ):
+                    print(chunk.choices[0].delta.content or "", end="", flush=True)
         """
         body = params.model_dump(exclude_none=True)
         body["stream"] = True
