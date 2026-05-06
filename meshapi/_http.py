@@ -48,6 +48,16 @@ class MeshAPIConfig:
 _DONE_SENTINEL = object()  # returned by _try_parse_sse_frame when [DONE] is seen
 
 
+def _extract_sse_data(frame: str) -> Optional[str]:
+    data_lines = []
+    for line in frame.splitlines():
+        if line.startswith("data: "):
+            data_lines.append(line[len("data: "):])
+    if not data_lines:
+        return None
+    return "\n".join(data_lines)
+
+
 def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, object]]":
     """Parse one SSE frame string.
 
@@ -58,10 +68,7 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
     Raises:
         MeshAPIError on mid-stream error frames
     """
-    data_line: Optional[str] = None
-    for line in frame.splitlines():
-        if line.startswith("data: "):
-            data_line = line[len("data: "):]
+    data_line = _extract_sse_data(frame)
     if data_line is None or data_line.strip() == "":
         return None
     if data_line.strip() == "[DONE]":
@@ -81,6 +88,27 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
         )
 
     return ChatCompletionChunk.model_validate(parsed)
+
+
+def _try_parse_json_sse_frame(frame: str, model_cls: Type[T]) -> Optional[Union[T, object]]:
+    data_line = _extract_sse_data(frame)
+    if data_line is None or data_line.strip() == "":
+        return None
+    if data_line.strip() == "[DONE]":
+        return _DONE_SENTINEL
+    try:
+        parsed = json.loads(data_line)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(parsed, dict) and "error" in parsed:
+        err = parsed["error"]
+        raise MeshAPIError(
+            err.get("message", "upstream error"),
+            status=0,
+            error_code=err.get("code", "upstream_error"),
+            request_id="",
+        )
+    return model_cls.model_validate(parsed)
 
 
 def _iter_sse(response: httpx.Response) -> Iterator[ChatCompletionChunk]:
@@ -108,6 +136,30 @@ def _iter_sse(response: httpx.Response) -> Iterator[ChatCompletionChunk]:
         raise MeshAPIError.stream_interrupted(str(exc)) from exc
 
 
+def _iter_json_sse(response: httpx.Response, model_cls: Type[T]) -> Iterator[T]:
+    remainder = ""
+    try:
+        for raw_bytes in response.iter_bytes():
+            try:
+                remainder += raw_bytes.decode("utf-8", errors="replace")
+            except Exception:
+                continue
+            frames = remainder.split("\n\n")
+            remainder = frames.pop()
+            for frame in frames:
+                if not frame.strip():
+                    continue
+                result = _try_parse_json_sse_frame(frame, model_cls)
+                if result is _DONE_SENTINEL:
+                    return
+                if result is not None:
+                    yield result
+    except httpx.RemoteProtocolError as exc:
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
+    except httpx.StreamError as exc:
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
+
+
 async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionChunk]:
     """Async SSE iterator with remainder-buffer handling. Stops on [DONE]."""
     remainder = ""
@@ -127,6 +179,30 @@ async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionCh
                     return
                 if result is not None:
                     yield result  # type: ignore[misc]
+    except httpx.RemoteProtocolError as exc:
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
+    except httpx.StreamError as exc:
+        raise MeshAPIError.stream_interrupted(str(exc)) from exc
+
+
+async def _aiter_json_sse(response: httpx.Response, model_cls: Type[T]) -> AsyncIterator[T]:
+    remainder = ""
+    try:
+        async for raw_bytes in response.aiter_bytes():
+            try:
+                remainder += raw_bytes.decode("utf-8", errors="replace")
+            except Exception:
+                continue
+            frames = remainder.split("\n\n")
+            remainder = frames.pop()
+            for frame in frames:
+                if not frame.strip():
+                    continue
+                result = _try_parse_json_sse_frame(frame, model_cls)
+                if result is _DONE_SENTINEL:
+                    return
+                if result is not None:
+                    yield result
     except httpx.RemoteProtocolError as exc:
         raise MeshAPIError.stream_interrupted(str(exc)) from exc
     except httpx.StreamError as exc:
@@ -244,10 +320,19 @@ class SyncHttpClient:
             return
         response.json()  # consume body; _raise_for_status already ran
 
+    def get_bytes(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> bytes:
+        response = self._request("GET", path, params=params)
+        return response.content
+
     def stream(self, path: str, body: Any) -> Iterator[ChatCompletionChunk]:
         with self._client.stream("POST", path, json=body, headers=self._headers()) as response:
             _raise_for_status(response)
             yield from _iter_sse(response)
+
+    def stream_json(self, path: str, body: Any, model_cls: Type[T]) -> Iterator[T]:
+        with self._client.stream("POST", path, json=body, headers=self._headers()) as response:
+            _raise_for_status(response)
+            yield from _iter_json_sse(response, model_cls)
 
     def close(self) -> None:
         self._client.close()
@@ -329,6 +414,10 @@ class AsyncHttpClient:
         if response.status_code == 204:
             return
 
+    async def get_bytes(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> bytes:
+        response = await self._request("GET", path, params=params)
+        return response.content
+
     async def stream(self, path: str, body: Any) -> AsyncIterator[ChatCompletionChunk]:
         async with self._client.stream(
             "POST", path, json=body, headers=self._headers()
@@ -336,6 +425,14 @@ class AsyncHttpClient:
             _raise_for_status(response)
             async for chunk in _aiter_sse(response):
                 yield chunk
+
+    async def stream_json(self, path: str, body: Any, model_cls: Type[T]) -> AsyncIterator[T]:
+        async with self._client.stream(
+            "POST", path, json=body, headers=self._headers()
+        ) as response:
+            _raise_for_status(response)
+            async for item in _aiter_json_sse(response, model_cls):
+                yield item
 
     async def aclose(self) -> None:
         await self._client.aclose()

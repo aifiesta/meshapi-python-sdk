@@ -18,15 +18,38 @@ from ._types import (
     ChatCompletionResponse,
     ChatMessage,
     ChatRole,
+    CompareParams,
+    CompareResponse,
+    CompareStreamEvent,
     ContentPart,
+    ContentPartAudio,
     ContentPartImage,
     ContentPartText,
+    CreateBatchParams,
     CreateTemplateParams,
+    EmbeddingItem,
+    EmbeddingsParams,
+    EmbeddingsResponse,
+    EmbeddingsUsage,
+    FileObject,
     ImageDetail,
+    ImageOptions,
+    InputAudio,
     ListModelsParams,
+    ModelOverride,
     ModelInfo,
     ModelPricing,
+    BatchListResponse,
+    BatchObject,
+    BatchRequestItem,
+    ProviderPreferences,
+    ResponsesFunctionTool,
+    ResponsesParams,
+    ResponsesResponse,
+    ResponsesStreamEvent,
+    ResponsesUsage,
     TemplateSummary,
+    TokenUsage,
     Tool,
     ToolCall,
     ToolCallFunction,
@@ -34,11 +57,19 @@ from ._types import (
     ToolChoiceFunction,
     ToolChoiceObject,
     ToolFunction,
+    UploadBatchFileParams,
+    AudioOutputOptions,
+    BuiltinTool,
     UpdateTemplateParams,
     UsageInfo,
 )
+from .resources.batches import AsyncBatchesResource, BatchesResource
 from .resources.chat import AsyncChatResource, ChatResource
+from .resources.compare import AsyncCompareResource, CompareResource
+from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
+from .resources.files import AsyncFilesResource, FilesResource
 from .resources.models import AsyncModelsResource, ModelsResource
+from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
 __version__ = "0.1.0"
@@ -52,9 +83,13 @@ __all__ = [
     "ChatRole",
     "ChatMessage",
     "ContentPart",
+    "ContentPartAudio",
     "ContentPartText",
     "ContentPartImage",
     "ImageDetail",
+    "InputAudio",
+    "ImageOptions",
+    "AudioOutputOptions",
     "ToolFunction",
     "Tool",
     "ToolCall",
@@ -73,6 +108,28 @@ __all__ = [
     "ModelPricing",
     "ModelInfo",
     "ListModelsParams",
+    "EmbeddingsParams",
+    "EmbeddingItem",
+    "EmbeddingsUsage",
+    "EmbeddingsResponse",
+    "ResponsesFunctionTool",
+    "BuiltinTool",
+    "ResponsesParams",
+    "ResponsesUsage",
+    "ResponsesResponse",
+    "ResponsesStreamEvent",
+    "ModelOverride",
+    "CompareParams",
+    "TokenUsage",
+    "CompareResponse",
+    "CompareStreamEvent",
+    "BatchRequestItem",
+    "UploadBatchFileParams",
+    "FileObject",
+    "CreateBatchParams",
+    "BatchObject",
+    "BatchListResponse",
+    "ProviderPreferences",
     "CreateTemplateParams",
     "UpdateTemplateParams",
     "TemplateSummary",
@@ -119,6 +176,11 @@ class MeshAPI:
         )
         http = SyncHttpClient(config)
         self.chat = ChatResource(http)
+        self.responses = ResponsesResource(http)
+        self.embeddings = EmbeddingsResource(http)
+        self.compare = CompareResource(http)
+        self.files = FilesResource(http)
+        self.batches = BatchesResource(http)
         self.models = ModelsResource(http)
         self.templates = TemplatesResource(http)
         self._http = http
@@ -170,6 +232,11 @@ class AsyncMeshAPI:
         )
         http = AsyncHttpClient(config)
         self.chat = AsyncChatResource(http)
+        self.responses = AsyncResponsesResource(http)
+        self.embeddings = AsyncEmbeddingsResource(http)
+        self.compare = AsyncCompareResource(http)
+        self.files = AsyncFilesResource(http)
+        self.batches = AsyncBatchesResource(http)
         self.models = AsyncModelsResource(http)
         self.templates = AsyncTemplatesResource(http)
         self._http = http

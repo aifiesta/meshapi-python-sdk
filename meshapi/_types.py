@@ -31,7 +31,19 @@ class ContentPartImage(BaseModel):
     image_url: ImageDetail
 
 
-ContentPart = Union[ContentPartText, ContentPartImage]
+class InputAudio(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    data: str
+    format: Literal["wav", "mp3", "aiff", "aac", "ogg", "flac", "m4a", "pcm16", "pcm24"]
+
+
+class ContentPartAudio(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    type: Literal["input_audio"]
+    input_audio: InputAudio
+
+
+ContentPart = Union[ContentPartText, ContentPartImage, ContentPartAudio]
 
 
 class ToolCallFunction(BaseModel):
@@ -83,6 +95,20 @@ class ToolChoiceObject(BaseModel):
 ToolChoice = Union[Literal["auto", "none", "required"], ToolChoiceObject]
 
 
+class AudioOutputOptions(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    voice: str = "alloy"
+    format: Literal["wav", "mp3", "flac", "opus", "pcm16"] = "wav"
+
+
+class ImageOptions(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    n: int = Field(default=1, ge=1, le=10)
+    size: str = "1024x1024"
+    quality: str = "high"
+    response_format: Literal["url", "b64_json"] = "url"
+
+
 # ---------------------------------------------------------------------------
 # Chat Completions
 # ---------------------------------------------------------------------------
@@ -118,6 +144,11 @@ class ChatCompletionParams(BaseModel):
     models: Optional[List[str]] = None
 
     user: Optional[str] = None
+    modality: Optional[Literal["text", "image"]] = None
+    image: Optional[ImageOptions] = None
+    async_mode: Optional[bool] = None
+    modalities: Optional[List[Literal["text", "audio"]]] = None
+    audio: Optional[AudioOutputOptions] = None
 
 
 class UsageInfo(BaseModel):
@@ -126,13 +157,18 @@ class UsageInfo(BaseModel):
     completion_tokens: int
     total_tokens: int
     prompt_tokens_details: Optional[Dict[str, Any]] = None
+    completion_tokens_details: Optional[Dict[str, Any]] = None
+    classifier_prompt_tokens: Optional[int] = None
+    classifier_completion_tokens: Optional[int] = None
+    classifier_tokens: Optional[int] = None
 
 
 class ChatCompletionMessage(BaseModel):
     model_config = ConfigDict(extra="ignore")
     role: str
-    content: Optional[str] = None
+    content: Optional[Union[str, List[ContentPart]]] = None
     tool_calls: Optional[List[ToolCall]] = None
+    audio: Optional[Dict[str, Any]] = None
 
 
 class ChatCompletionChoice(BaseModel):
@@ -159,6 +195,7 @@ class ChatCompletionChunkDelta(BaseModel):
     role: Optional[str] = None
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
+    audio: Optional[Dict[str, Any]] = None
 
 
 class ChatCompletionChunkChoice(BaseModel):
@@ -202,6 +239,12 @@ class ModelInfo(BaseModel):
     is_free: bool
     pricing: Optional[ModelPricing] = None
     description: Optional[str] = None
+    supports_thinking: Optional[bool] = None
+    supports_completions_api: Optional[bool] = None
+    supports_responses_api: Optional[bool] = None
+    model_type: Optional[str] = None
+    input_modalities: Optional[List[str]] = None
+    output_modalities: Optional[List[str]] = None
 
 
 class ListModelsParams(BaseModel):
@@ -246,7 +289,8 @@ class TemplateSummary(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
-    owner: str
+    owner: Optional[str] = None
+    is_global: bool
     description: Optional[str] = None
     system: Optional[str] = None
     messages: Optional[List[Dict[str, Any]]] = None
@@ -255,6 +299,258 @@ class TemplateSummary(BaseModel):
     variables: Optional[List[str]] = None
     created_at: str
     updated_at: str
+
+
+# ---------------------------------------------------------------------------
+# Embeddings
+# ---------------------------------------------------------------------------
+
+
+class ProviderPreferences(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    order: Optional[List[str]] = None
+    allow_fallbacks: Optional[bool] = None
+    require_parameters: Optional[bool] = None
+    data_collection: Optional[Literal["allow", "deny"]] = None
+
+
+class EmbeddingsParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: Optional[str] = None
+    input: Union[str, List[str], List[int], List[List[int]]]
+    dimensions: Optional[int] = Field(default=None, ge=1)
+    encoding_format: Optional[Literal["float", "base64"]] = None
+    input_type: Optional[str] = None
+    provider: Optional[Union[str, ProviderPreferences]] = None
+    user: Optional[str] = Field(default=None, max_length=256)
+
+
+class EmbeddingItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    object: str
+    index: int
+    embedding: Union[List[float], str]
+
+
+class EmbeddingsUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    prompt_tokens: int
+    total_tokens: int
+
+
+class EmbeddingsResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    object: str
+    data: List[EmbeddingItem]
+    model: str
+    usage: Optional[EmbeddingsUsage] = None
+
+
+# ---------------------------------------------------------------------------
+# Responses
+# ---------------------------------------------------------------------------
+
+
+class BuiltinTool(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    type: Literal[
+        "image_generation",
+        "web_search_preview",
+        "web_search_preview_2025_03_11",
+        "file_search",
+        "computer_use_preview",
+        "code_interpreter",
+    ]
+
+
+class ResponsesFunctionTool(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    type: Literal["function"] = "function"
+    name: str
+    description: Optional[str] = None
+    parameters: Optional[Dict[str, Any]] = None
+    strict: Optional[bool] = None
+
+
+class ResponsesParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: Optional[str] = None
+    input: Union[str, List[Any]]
+    template: Optional[str] = None
+    variables: Optional[Dict[str, str]] = None
+    session_id: Optional[str] = None
+    stream: bool = False
+    max_output_tokens: Optional[int] = Field(default=None, ge=1)
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    seed: Optional[int] = None
+    reasoning: Optional[Dict[str, Any]] = None
+    tools: Optional[List[Union[ResponsesFunctionTool, BuiltinTool]]] = None
+    tool_choice: Optional[Union[str, Dict[str, Any]]] = None
+    response_format: Optional[Dict[str, Any]] = None
+    plugins: Optional[List[Any]] = None
+    user: Optional[str] = Field(default=None, max_length=256)
+
+
+class ResponsesUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    prompt_tokens_details: Optional[Dict[str, Any]] = None
+    completion_tokens_details: Optional[Dict[str, Any]] = None
+    classifier_tokens: Optional[int] = None
+
+
+class ResponsesResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: Optional[str] = None
+    object: Optional[str] = None
+    model: Optional[str] = None
+    output: Optional[List[Any]] = None
+    usage: Optional[ResponsesUsage] = None
+    status: Optional[str] = None
+
+
+class ResponsesStreamEvent(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    type: Optional[str] = None
+    response: Optional[Dict[str, Any]] = None
+    usage: Optional[ResponsesUsage] = None
+
+
+# ---------------------------------------------------------------------------
+# Compare
+# ---------------------------------------------------------------------------
+
+
+class ModelOverride(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, ge=1)
+    system_prompt: Optional[str] = None
+
+
+class CompareParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    models: List[str]
+    messages: List[ChatMessage]
+    model_overrides: Optional[List[ModelOverride]] = None
+    comparison_model: Optional[str] = None
+    comparison_instructions: Optional[str] = None
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    max_tokens: Optional[int] = Field(default=None, ge=1)
+    stream: bool = False
+    template: Optional[str] = None
+    variables: Optional[Dict[str, str]] = None
+    skip_comparison: bool = False
+
+
+class TokenUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+
+
+class ModelCompareResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    response_body: Optional[Dict[str, Any]] = None
+    content: Optional[str] = None
+    latency_ms: int
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+    usage: Optional[TokenUsage] = None
+    request_id: str
+
+
+class CompareResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    comparison_id: str
+    object: str
+    created: int
+    models: List[str]
+    results: List[ModelCompareResult]
+    comparison: Optional[str] = None
+    comparison_model: Optional[str] = None
+    comparison_usage: Optional[TokenUsage] = None
+    comparison_fallback_used: bool = False
+    total_latency_ms: int
+    partial: bool = False
+    skip_comparison: bool = False
+
+
+class CompareStreamEvent(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    event: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None
+
+
+# ---------------------------------------------------------------------------
+# Files / Batches
+# ---------------------------------------------------------------------------
+
+
+class BatchRequestItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    custom_id: str
+    method: str = "POST"
+    url: str = "/v1/chat/completions"
+    body: Dict[str, Any]
+
+
+class UploadBatchFileParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    purpose: str = "batch"
+    requests: List[BatchRequestItem]
+
+
+class FileObject(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    object: Optional[str] = None
+    bytes: Optional[int] = None
+    created_at: Optional[int] = None
+    filename: Optional[str] = None
+    purpose: Optional[str] = None
+    status: Optional[str] = None
+    status_details: Optional[Any] = None
+
+
+class CreateBatchParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    input_file_id: str
+    endpoint: str
+    completion_window: str
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class BatchObject(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    object: Optional[str] = None
+    endpoint: Optional[str] = None
+    input_file_id: Optional[str] = None
+    output_file_id: Optional[str] = None
+    status: Optional[str] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    created_at: Optional[int] = None
+    completed_at: Optional[int] = None
+    usage_synced: Optional[bool] = None
+
+
+class BatchListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    object: str
+    data: List[BatchObject]
+    has_more: bool
+    first_id: Optional[str] = None
+    last_id: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
