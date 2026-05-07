@@ -11,8 +11,12 @@ Python SDK for the MeshAPI AI model gateway.
 ## Installation
 
 ```bash
-pip install meshapi-python-sdk
-# or from source:
+pip install "meshapi-python-sdk @ git+https://github.com/aifiesta/meshapi-python-sdk.git"
+```
+
+Or from source for development:
+
+```bash
 pip install -e ".[dev]"
 ```
 
