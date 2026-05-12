@@ -59,6 +59,20 @@ class ToolCall(BaseModel):
     function: ToolCallFunction
 
 
+class ToolCallFunctionChunk(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: Optional[str] = None
+    arguments: Optional[str] = None
+
+
+class ToolCallChunk(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    index: int
+    id: Optional[str] = None
+    type: Optional[Literal["function"]] = None
+    function: Optional[ToolCallFunctionChunk] = None
+
+
 class ChatMessage(BaseModel):
     model_config = ConfigDict(extra="ignore")
     role: ChatRole
@@ -194,7 +208,7 @@ class ChatCompletionChunkDelta(BaseModel):
     model_config = ConfigDict(extra="ignore")
     role: Optional[str] = None
     content: Optional[str] = None
-    tool_calls: Optional[List[ToolCall]] = None
+    tool_calls: Optional[List[ToolCallChunk]] = None
     audio: Optional[Dict[str, Any]] = None
 
 
@@ -488,6 +502,22 @@ class CompareStreamEvent(BaseModel):
     model_config = ConfigDict(extra="allow")
     event: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
+
+    # Common fields flattened from various compare event types
+    delta: Optional[str] = None
+    model: Optional[str] = None
+    comparison_id: Optional[str] = None
+    comparison_model: Optional[str] = None
+    models: Optional[List[str]] = None
+    latency_ms: Optional[int] = None
+    total_latency_ms: Optional[int] = None
+    finish_reason: Optional[str] = None
+    error: Optional[Any] = None
+    error_code: Optional[str] = None
+    usage: Optional[Dict[str, Any]] = None
+    skip_comparison: Optional[bool] = None
+    partial: Optional[bool] = None
+    comparison_fallback_used: Optional[bool] = None
 
 
 # ---------------------------------------------------------------------------

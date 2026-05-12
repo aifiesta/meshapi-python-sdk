@@ -8,7 +8,17 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Dict, Iterator, Optional, Set, Type, TypeVar, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Dict,
+    Iterator,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import httpx
 
@@ -52,10 +62,17 @@ def _extract_sse_data(frame: str) -> Optional[str]:
     data_lines = []
     for line in frame.splitlines():
         if line.startswith("data: "):
-            data_lines.append(line[len("data: "):])
+            data_lines.append(line[len("data: ") :])
     if not data_lines:
         return None
     return "\n".join(data_lines)
+
+
+def _extract_sse_event(frame: str) -> Optional[str]:
+    for line in frame.splitlines():
+        if line.startswith("event: "):
+            return line[len("event: ") :]
+    return None
 
 
 def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, object]]":
@@ -78,19 +95,33 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
     except json.JSONDecodeError:
         return None
 
-    if isinstance(parsed, dict) and "error" in parsed:
+    if isinstance(parsed, dict) and parsed.get("error") is not None:
         err = parsed["error"]
-        raise MeshAPIError(
-            err.get("message", "upstream error"),
-            status=0,
-            error_code=err.get("code", "upstream_error"),
-            request_id="",
-        )
+        if isinstance(err, dict):
+            raise MeshAPIError(
+                err.get("message", "upstream error"),
+                status=0,
+                error_code=err.get("code", "upstream_error"),
+                request_id="",
+            )
+        else:
+            raise MeshAPIError(
+                str(err),
+                status=0,
+                error_code="upstream_error",
+                request_id="",
+            )
+
+    sse_event = _extract_sse_event(frame)
+    if isinstance(parsed, dict) and sse_event is not None:
+        parsed["event"] = sse_event
 
     return ChatCompletionChunk.model_validate(parsed)
 
 
-def _try_parse_json_sse_frame(frame: str, model_cls: Type[T]) -> Optional[Union[T, object]]:
+def _try_parse_json_sse_frame(
+    frame: str, model_cls: Type[T]
+) -> Optional[Union[T, object]]:
     data_line = _extract_sse_data(frame)
     if data_line is None or data_line.strip() == "":
         return None
@@ -100,14 +131,27 @@ def _try_parse_json_sse_frame(frame: str, model_cls: Type[T]) -> Optional[Union[
         parsed = json.loads(data_line)
     except json.JSONDecodeError:
         return None
-    if isinstance(parsed, dict) and "error" in parsed:
+    if isinstance(parsed, dict) and parsed.get("error") is not None:
         err = parsed["error"]
-        raise MeshAPIError(
-            err.get("message", "upstream error"),
-            status=0,
-            error_code=err.get("code", "upstream_error"),
-            request_id="",
-        )
+        if isinstance(err, dict):
+            raise MeshAPIError(
+                err.get("message", "upstream error"),
+                status=0,
+                error_code=err.get("code", "upstream_error"),
+                request_id="",
+            )
+        else:
+            raise MeshAPIError(
+                str(err),
+                status=0,
+                error_code="upstream_error",
+                request_id="",
+            )
+
+    sse_event = _extract_sse_event(frame)
+    if isinstance(parsed, dict) and sse_event is not None:
+        parsed["event"] = sse_event
+
     return model_cls.model_validate(parsed)
 
 
@@ -185,7 +229,9 @@ async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionCh
         raise MeshAPIError.stream_interrupted(str(exc)) from exc
 
 
-async def _aiter_json_sse(response: httpx.Response, model_cls: Type[T]) -> AsyncIterator[T]:
+async def _aiter_json_sse(
+    response: httpx.Response, model_cls: Type[T]
+) -> AsyncIterator[T]:
     remainder = ""
     try:
         async for raw_bytes in response.aiter_bytes():
@@ -219,7 +265,7 @@ def _compute_delay_s(attempt: int, retry_after: Optional[int]) -> float:
     if retry_after is not None:
         base = retry_after * 1000
     else:
-        base = _BACKOFF_BASE_MS * (2 ** attempt)
+        base = _BACKOFF_BASE_MS * (2**attempt)
     capped = min(base, _BACKOFF_MAX_MS)
     jittered = capped * (0.8 + random.random() * 0.4)  # ±20%
     return jittered / 1000.0
@@ -286,7 +332,10 @@ class SyncHttpClient:
                 return req
 
             response = self._client.request(method, path, **kwargs)
-            if response.status_code in _RETRY_STATUS_CODES and attempt < self._config.max_retries:
+            if (
+                response.status_code in _RETRY_STATUS_CODES
+                and attempt < self._config.max_retries
+            ):
                 delay = _compute_delay_s(attempt, _retry_after_from_response(response))
                 time.sleep(delay)
                 continue
@@ -325,12 +374,16 @@ class SyncHttpClient:
         return response.content
 
     def stream(self, path: str, body: Any) -> Iterator[ChatCompletionChunk]:
-        with self._client.stream("POST", path, json=body, headers=self._headers()) as response:
+        with self._client.stream(
+            "POST", path, json=body, headers=self._headers()
+        ) as response:
             _raise_for_status(response)
             yield from _iter_sse(response)
 
     def stream_json(self, path: str, body: Any, model_cls: Type[T]) -> Iterator[T]:
-        with self._client.stream("POST", path, json=body, headers=self._headers()) as response:
+        with self._client.stream(
+            "POST", path, json=body, headers=self._headers()
+        ) as response:
             _raise_for_status(response)
             yield from _iter_json_sse(response, model_cls)
 
@@ -382,7 +435,10 @@ class AsyncHttpClient:
 
         for attempt in range(self._config.max_retries + 1):
             response = await self._client.request(method, path, **kwargs)
-            if response.status_code in _RETRY_STATUS_CODES and attempt < self._config.max_retries:
+            if (
+                response.status_code in _RETRY_STATUS_CODES
+                and attempt < self._config.max_retries
+            ):
                 delay = _compute_delay_s(attempt, _retry_after_from_response(response))
                 await asyncio.sleep(delay)
                 continue
@@ -414,7 +470,9 @@ class AsyncHttpClient:
         if response.status_code == 204:
             return
 
-    async def get_bytes(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> bytes:
+    async def get_bytes(
+        self, path: str, *, params: Optional[Dict[str, Any]] = None
+    ) -> bytes:
         response = await self._request("GET", path, params=params)
         return response.content
 
@@ -426,7 +484,9 @@ class AsyncHttpClient:
             async for chunk in _aiter_sse(response):
                 yield chunk
 
-    async def stream_json(self, path: str, body: Any, model_cls: Type[T]) -> AsyncIterator[T]:
+    async def stream_json(
+        self, path: str, body: Any, model_cls: Type[T]
+    ) -> AsyncIterator[T]:
         async with self._client.stream(
             "POST", path, json=body, headers=self._headers()
         ) as response:
