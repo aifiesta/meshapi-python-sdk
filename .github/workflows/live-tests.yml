@@ -1,6 +1,4 @@
 # Python SDK — Live Tests
-# Calls the reusable workflow in aifiesta/meshapi-sdk-livetest.
-# Set MESHAPI_TOKEN in: Settings → Secrets and Variables → Actions → Secrets
 
 name: Live Tests
 
@@ -12,11 +10,42 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  MESHAPI_BASE_URL: "https://api-dev.meshapi.ai"
+  MESHAPI_MODEL: "openai/gpt-4o-mini"
+  MESHAPI_EMBEDDINGS_MODEL: "text-embedding-3-small"
+  MESHAPI_IMAGE_URL: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"
+  MESHAPI_TOKEN: "rsk_01KQY041DNE80NYS0DW7SWXZWB"
+
 jobs:
   live-test:
-    name: Run Python Live Tests
-    uses: aifiesta/meshapi-sdk-livetest/.github/workflows/sdk-live-tests.yml@main
-    with:
-      language: python
-      python-version: "3.12"
-    secrets: inherit
+    name: Python SDK Live Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout SDK source (including tests)
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: livetests
+        run: pip install -r requirements.txt
+
+      - name: Run live tests (pytest)
+        working-directory: livetests
+        run: pytest . -v --tb=short
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## 🐍 Python SDK Live Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python | 3.12 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Base URL | \`${{ env.MESHAPI_BASE_URL }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Model | \`${{ env.MESHAPI_MODEL }}\` |" >> $GITHUB_STEP_SUMMARY
