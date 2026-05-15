@@ -51,28 +51,15 @@ Get a key at [meshapi.ai](https://meshapi.ai). Data-plane keys are prefixed `rsk
 | **Structured errors** | `MeshAPIError` with `error_code`, `status`, `request_id`, `retry_after_seconds`, and provider error details. |
 | **Type-safe** | Every request and response is a Pydantic v2 model. Autocomplete in your editor, validation at the boundary. |
 
-## Configuration
+## Authentication
+
+The SDK requires a Mesh API key (prefixed with `rsk_`) for all requests. You can obtain a key at [meshapi.ai](https://meshapi.ai).
 
 ```python
-client = MeshAPI(
-    base_url="https://api.meshapi.ai",  # required
-    token="rsk_...",                     # required: data-plane key or Supabase JWT
-    timeout=60.0,                        # default 60s
-    max_retries=3,                       # default 3, set 0 to disable
-    httpx_client=None,                   # optional: inject a custom httpx.Client
-)
+client = MeshAPI(base_url="https://api.meshapi.ai", token="rsk_...")
 ```
 
-`AsyncMeshAPI` takes the same arguments (with `async_httpx_client` instead of `httpx_client`) and supports `async with` for clean shutdown.
-
-Two auth realms. Use one client per realm.
-
-| Realm | Token | Resources |
-|---|---|---|
-| **Data-plane** | `rsk_<ULID>` | `chat`, `responses`, `embeddings`, `compare`, `files`, `batches` |
-| **Control-plane** | Supabase JWT | `templates`, `models` |
-
-`models` accepts either token type.
+This key provides access to all resources: `chat`, `responses`, `embeddings`, `compare`, `files`, `batches`, `models`, and `templates`.
 
 ## Chat completions
 
@@ -305,10 +292,10 @@ Server-stored prompts with `{{variable}}` interpolation. Reference them by name 
 ```python
 from meshapi import MeshAPI, CreateTemplateParams, ChatCompletionParams, ChatMessage
 
-# Manage templates with a control-plane JWT
-ctrl = MeshAPI(base_url="https://api.meshapi.ai", token=supabase_session_jwt)
+# Manage templates with either a data-plane key or control-plane JWT
+client = MeshAPI(base_url="https://api.meshapi.ai", token="rsk_...")
 
-ctrl.templates.create(
+client.templates.create(
     CreateTemplateParams(
         name="support-agent",
         system="You are a support agent for {{company}}. Be concise and friendly.",
@@ -316,9 +303,6 @@ ctrl.templates.create(
         variables=["company"],
     )
 )
-
-# Use the template with a data-plane rsk_ key
-client = MeshAPI(base_url="https://api.meshapi.ai", token="rsk_...")
 
 reply = client.chat.completions.create(
     ChatCompletionParams(

@@ -5,9 +5,29 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      skip_live_tests:
+        description: "Skip live tests (emergency release only)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
+  # ── Gate: run live tests before publishing ────────────────────────────
+  live-test:
+    name: Live Tests (release gate)
+    if: ${{ !inputs.skip_live_tests }}
+    uses: aifiesta/meshapi-sdk-livetest/.github/workflows/sdk-live-tests.yml@main
+    with:
+      language: python
+      python-version: "3.12"
+    secrets: inherit
+
+  # ── Build ─────────────────────────────────────────────────────────────
   build:
+    needs: live-test
+    # Allow build to proceed if live-test was skipped (emergency release)
+    if: ${{ always() && (needs.live-test.result == 'success' || needs.live-test.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +49,7 @@ jobs:
           name: dist
           path: dist/
 
+  # ── Publish ───────────────────────────────────────────────────────────
   publish:
     needs: build
     runs-on: ubuntu-latest

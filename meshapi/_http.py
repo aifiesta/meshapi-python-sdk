@@ -377,6 +377,8 @@ class SyncHttpClient:
         with self._client.stream(
             "POST", path, json=body, headers=self._headers()
         ) as response:
+            if response.status_code >= 400:
+                response.read()
             _raise_for_status(response)
             yield from _iter_sse(response)
 
@@ -384,6 +386,8 @@ class SyncHttpClient:
         with self._client.stream(
             "POST", path, json=body, headers=self._headers()
         ) as response:
+            if response.status_code >= 400:
+                response.read()
             _raise_for_status(response)
             yield from _iter_json_sse(response, model_cls)
 
@@ -480,6 +484,8 @@ class AsyncHttpClient:
         async with self._client.stream(
             "POST", path, json=body, headers=self._headers()
         ) as response:
+            if response.status_code >= 400:
+                await response.aread()
             _raise_for_status(response)
             async for chunk in _aiter_sse(response):
                 yield chunk
@@ -490,6 +496,8 @@ class AsyncHttpClient:
         async with self._client.stream(
             "POST", path, json=body, headers=self._headers()
         ) as response:
+            if response.status_code >= 400:
+                await response.aread()
             _raise_for_status(response)
             async for item in _aiter_json_sse(response, model_cls):
                 yield item
