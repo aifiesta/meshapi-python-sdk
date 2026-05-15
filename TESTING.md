@@ -55,10 +55,10 @@ MESHAPI_BASE_URL=http://localhost:8000 MESHAPI_TOKEN=your_rsk_key pytest tests/i
 
 ## 3. Live Tests (Standalone)
 
-Located in the separate `meshapi-python-livetest/` directory. These are standalone scripts designed for quick, manual verification of the SDK against a live server.
+Located in the separate `meshapi-sdk-livetest/` directory. These are standalone scripts designed for quick, manual verification of the SDK against a live server.
 
 **To run live tests:**
-1. Navigate to the directory: `cd ../meshapi-python-livetest`
+1. Navigate to the directory: `cd ../meshapi-sdk-livetest`
 2. Configure the server and token in `config.py`.
 3. Run individual scripts:
 ```bash
