@@ -13,7 +13,8 @@ on:
 env:
   MESHAPI_BASE_URL: "https://api-dev.meshapi.ai"
   MESHAPI_MODEL: "openai/gpt-4o-mini"
-  MESHAPI_EMBEDDINGS_MODEL: "text-embedding-3-small"
+  MESHAPI_EMBEDDINGS_MODEL: "openai/text-embedding-3-small"
+  MESHAPI_SECOND_MODEL: "anthropic/claude-haiku-4-5"
   MESHAPI_IMAGE_URL: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"
   MESHAPI_TOKEN: "rsk_01KQY041DNE80NYS0DW7SWXZWB"
 

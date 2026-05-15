@@ -74,10 +74,10 @@ def test_responses_stream(client: MeshAPI, model: str) -> None:
     assert events, "expected at least one streaming event"
 
 
-def test_compare_create(client: MeshAPI, model: str) -> None:
+def test_compare_create(client: MeshAPI, model: str, second_model: str) -> None:
     result = client.compare.create(
         CompareParams(
-            models=[model, model],
+            models=[model, second_model],
             messages=[ChatMessage(role="user", content="Reply with the word: compare")],
             skip_comparison=True,
             max_tokens=16,
@@ -86,11 +86,11 @@ def test_compare_create(client: MeshAPI, model: str) -> None:
     assert len(result.results) == 2, f"expected 2 results, got {len(result.results)}"
 
 
-def test_compare_stream(client: MeshAPI, model: str) -> None:
+def test_compare_stream(client: MeshAPI, model: str, second_model: str) -> None:
     events = list(
         client.compare.stream(
             CompareParams(
-                models=[model, model],
+                models=[model, second_model],
                 messages=[ChatMessage(role="user", content="Reply with the word: stream")],
                 skip_comparison=True,
                 max_tokens=16,

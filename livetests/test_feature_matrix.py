@@ -29,8 +29,6 @@ def test_chat_stable_options(client: MeshAPI, model: str) -> None:
             temperature=0,
             top_p=1,
             user="python-feature-matrix",
-            transforms=["middle-out"],
-            models=[model],
             max_tokens=10,
         )
     )
@@ -46,7 +44,6 @@ def test_responses_stable_options(client: MeshAPI, model: str) -> None:
             reasoning={"effort": "low"},
             response_format={"type": "text"},
             tool_choice="auto",
-            plugins=[],
             max_output_tokens=10,
             user="python-feature-matrix",
         )
@@ -66,10 +63,10 @@ def test_embeddings_stable_options(client: MeshAPI, embeddings_model: str) -> No
     assert len(result.data) == 2, "expected 2 embedding items for 2 inputs"
 
 
-def test_compare_stable_options(client: MeshAPI, model: str) -> None:
+def test_compare_stable_options(client: MeshAPI, model: str, second_model: str) -> None:
     result = client.compare.create(
         CompareParams(
-            models=[model, model],
+            models=[model, second_model],
             messages=[ChatMessage(role="user", content="Reply with compare")],
             comparison_instructions="Do not add extra prose.",
             max_tokens=10,

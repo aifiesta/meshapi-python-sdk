@@ -153,10 +153,6 @@ class ChatCompletionParams(BaseModel):
     tools: Optional[List[Tool]] = None
     tool_choice: Optional[ToolChoice] = None
 
-    # OpenRouter-specific
-    transforms: Optional[List[str]] = None
-    models: Optional[List[str]] = None
-
     user: Optional[str] = None
     modality: Optional[Literal["text", "image"]] = None
     image: Optional[ImageOptions] = None
@@ -402,7 +398,6 @@ class ResponsesParams(BaseModel):
     tools: Optional[List[Union[ResponsesFunctionTool, BuiltinTool]]] = None
     tool_choice: Optional[Union[str, Dict[str, Any]]] = None
     response_format: Optional[Dict[str, Any]] = None
-    plugins: Optional[List[Any]] = None
     user: Optional[str] = Field(default=None, max_length=256)
 
 
