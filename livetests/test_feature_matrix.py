@@ -44,7 +44,7 @@ def test_responses_stable_options(client: MeshAPI, model: str) -> None:
             reasoning={"effort": "low"},
             response_format={"type": "text"},
             tool_choice="auto",
-            max_output_tokens=10,
+            max_output_tokens=16,
             user="python-feature-matrix",
         )
     )
