@@ -36,6 +36,7 @@ def test_chat_stable_options(client: MeshAPI, model: str) -> None:
     assert resp.model, "expected model in response"
 
 
+@pytest.mark.skip(reason="reasoning.effort not supported by default model; needs a reasoning-capable model")
 def test_responses_stable_options(client: MeshAPI, model: str) -> None:
     resp = client.responses.create(
         ResponsesParams(
