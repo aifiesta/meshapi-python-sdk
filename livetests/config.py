@@ -12,9 +12,13 @@ if str(SDK_ROOT) not in sys.path:
 
 def _load_shared_env() -> dict[str, str]:
     env_path = Path(__file__).resolve().parents[1] / ".env.livetest"
+    if not env_path.exists():
+        env_path = Path(__file__).resolve().parents[2] / ".env.livetest"
+    
     values: dict[str, str] = {}
     if not env_path.exists():
         return values
+
 
     for raw_line in env_path.read_text().splitlines():
         line = raw_line.strip()

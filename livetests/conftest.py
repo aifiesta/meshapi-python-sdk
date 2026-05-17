@@ -47,7 +47,8 @@ def model() -> str:
 
 @pytest.fixture(scope="session")
 def embeddings_model() -> str:
-    return get_env("MESHAPI_EMBEDDINGS_MODEL", MODEL)
+    return get_env("MESHAPI_EMBEDDINGS_MODEL", "openai/text-embedding-3-small")
+
 
 
 @pytest.fixture(scope="session")
