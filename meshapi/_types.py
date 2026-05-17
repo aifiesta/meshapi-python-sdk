@@ -594,6 +594,7 @@ class ImageGenerationParams(BaseModel):
     size: Optional[str] = None
     quality: Optional[str] = None
     response_format: Optional[Literal["url", "b64_json"]] = None
+    output_format: Optional[Literal["png", "jpeg", "webp"]] = None
     stream: Optional[bool] = None
 
 
@@ -601,12 +602,27 @@ class ImageItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
     url: Optional[str] = None
     b64_json: Optional[str] = None
+    revised_prompt: Optional[str] = None
+
+
+class ImageUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    input_tokens_details: Optional[Dict[str, Any]] = None
+    output_tokens_details: Optional[Dict[str, Any]] = None
 
 
 class ImageGenerationResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     created: int
     data: List[ImageItem]
+    background: Optional[str] = None
+    output_format: Optional[str] = None
+    quality: Optional[str] = None
+    size: Optional[str] = None
+    usage: Optional[ImageUsage] = None
 
 
 class ImageGenerationChunk(BaseModel):

@@ -200,29 +200,16 @@ from meshapi import ImageGenerationParams
 
 result = client.images.generate(
     ImageGenerationParams(
-        model="openai/dall-e-3",
-        prompt="A cute baby sea otter",
+        model="openai/gpt-image-1",
+        prompt="A watercolor of a fox in a snowy forest",
         n=1,
         size="1024x1024",
+        quality="high",
+        output_format="webp",
     )
 )
 
 print(result.data[0].url)
-
-# Streaming (Keep-alive pseudo-streaming)
-for chunk in client.images.stream(
-    ImageGenerationParams(
-        model="openai/dall-e-3",
-        prompt="A cute baby sea otter",
-        n=1,
-        size="1024x1024",
-    )
-):
-    if chunk.status == "processing":
-        print("Generating...")
-    elif chunk.data:
-        print("Done:", chunk.data[0].url)
-
 ```
 
 ## Compare (multi-model fanout)
