@@ -144,3 +144,24 @@ def test_files_and_batches_lifecycle(client: MeshAPI, model: str, unique_tag: st
             client.files.delete(uploaded.id)
         except Exception:
             pass
+
+
+def test_images_generate(client: MeshAPI, image_gen_model: str | None) -> None:
+    if not image_gen_model:
+        pytest.skip("MESHAPI_IMAGE_GEN_MODEL not set")
+        
+    from meshapi import ImageGenerationParams
+    
+    resp = client.images.generate(
+        ImageGenerationParams(
+            model=image_gen_model,
+            prompt="A small blue square on a white background.",
+            n=1,
+            size="1024x1024",
+        )
+    )
+    assert resp.created, "expected created timestamp"
+    assert resp.data, "expected data field"
+    assert len(resp.data) == 1, "expected 1 image"
+    assert resp.data[0].b64_json or resp.data[0].url, "expected image data"
+

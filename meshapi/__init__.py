@@ -33,6 +33,9 @@ from ._types import (
     EmbeddingsUsage,
     FileObject,
     ImageDetail,
+    ImageGenerationParams,
+    ImageGenerationResponse,
+    ImageItem,
     ImageOptions,
     InputAudio,
     ListModelsParams,
@@ -67,6 +70,7 @@ from .resources.batches import AsyncBatchesResource, BatchesResource
 from .resources.chat import AsyncChatResource, ChatResource
 from .resources.compare import AsyncCompareResource, CompareResource
 from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
+from .resources.images import AsyncImagesResource, ImagesResource
 from .resources.files import AsyncFilesResource, FilesResource
 from .resources.models import AsyncModelsResource, ModelsResource
 from .resources.responses import AsyncResponsesResource, ResponsesResource
@@ -89,6 +93,9 @@ __all__ = [
     "ImageDetail",
     "InputAudio",
     "ImageOptions",
+    "ImageGenerationParams",
+    "ImageGenerationResponse",
+    "ImageItem",
     "AudioOutputOptions",
     "ToolFunction",
     "Tool",
@@ -183,6 +190,7 @@ class MeshAPI:
         self.batches = BatchesResource(http)
         self.models = ModelsResource(http)
         self.templates = TemplatesResource(http)
+        self.images = ImagesResource(http)
         self._http = http
 
     def close(self) -> None:
@@ -239,6 +247,7 @@ class AsyncMeshAPI:
         self.batches = AsyncBatchesResource(http)
         self.models = AsyncModelsResource(http)
         self.templates = AsyncTemplatesResource(http)
+        self.images = AsyncImagesResource(http)
         self._http = http
 
     async def aclose(self) -> None:

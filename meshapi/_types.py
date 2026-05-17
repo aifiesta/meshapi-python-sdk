@@ -579,6 +579,37 @@ class BatchListResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Images
+# ---------------------------------------------------------------------------
+
+
+class ImageGenerationParams(BaseModel):
+    """Request body for POST /v1/images/generations."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    prompt: str
+    model: Optional[str] = None
+    n: Optional[int] = None
+    size: Optional[str] = None
+    quality: Optional[str] = None
+    response_format: Optional[Literal["url", "b64_json"]] = None
+    stream: Optional[bool] = None
+
+
+class ImageItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    url: Optional[str] = None
+    b64_json: Optional[str] = None
+
+
+class ImageGenerationResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    created: int
+    data: List[ImageItem]
+
+
+# ---------------------------------------------------------------------------
 # Error wire format
 # ---------------------------------------------------------------------------
 

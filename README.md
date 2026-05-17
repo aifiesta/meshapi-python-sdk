@@ -193,6 +193,23 @@ result = client.embeddings.create(
 print(len(result.data[0].embedding))
 ```
 
+## Image Generation
+
+```python
+from meshapi import ImageGenerationParams
+
+result = client.images.generate(
+    ImageGenerationParams(
+        model="openai/dall-e-3",
+        prompt="A cute baby sea otter",
+        n=1,
+        size="1024x1024",
+    )
+)
+
+print(result.data[0].url)
+```
+
 ## Compare (multi-model fanout)
 
 Fire one prompt at several models and stream their replies in parallel.
