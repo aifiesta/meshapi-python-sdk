@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import AsyncIterator, Iterator
+
 from .._http import AsyncHttpClient, SyncHttpClient
-from .._types import ImageGenerationParams, ImageGenerationResponse
+from .._types import ImageGenerationChunk, ImageGenerationParams, ImageGenerationResponse
 
 
 class ImagesResource:
@@ -14,6 +16,11 @@ class ImagesResource:
         data = self._http.post("/v1/images/generations", params.model_dump(exclude_none=True))
         return ImageGenerationResponse.model_validate(data)
 
+    def stream(self, params: ImageGenerationParams) -> Iterator[ImageGenerationChunk]:
+        body = params.model_dump(exclude_none=True)
+        body["stream"] = True
+        yield from self._http.stream_json("/v1/images/generations", body, ImageGenerationChunk)
+
 
 class AsyncImagesResource:
     def __init__(self, http: AsyncHttpClient) -> None:
@@ -22,3 +29,10 @@ class AsyncImagesResource:
     async def generate(self, params: ImageGenerationParams) -> ImageGenerationResponse:
         data = await self._http.post("/v1/images/generations", params.model_dump(exclude_none=True))
         return ImageGenerationResponse.model_validate(data)
+
+    async def stream(self, params: ImageGenerationParams) -> AsyncIterator[ImageGenerationChunk]:
+        body = params.model_dump(exclude_none=True)
+        body["stream"] = True
+        async for event in self._http.stream_json("/v1/images/generations", body, ImageGenerationChunk):
+            yield event
+

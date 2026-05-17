@@ -609,7 +609,18 @@ class ImageGenerationResponse(BaseModel):
     data: List[ImageItem]
 
 
+class ImageGenerationChunk(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: Optional[str] = None
+    object: Optional[str] = "image.chunk"
+    created: int
+    data: List[ImageItem] = []
+    status: Optional[str] = None
+    model: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
+
 # Error wire format
 # ---------------------------------------------------------------------------
 
