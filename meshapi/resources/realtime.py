@@ -17,12 +17,13 @@ class RealtimeError(MeshAPIError):
     """Raised when the server sends a JSON error envelope over the WebSocket."""
 
     def __init__(self, code: str, message: str, param: str | None = None, request_id: str | None = None) -> None:
-        super().__init__(status=0, code=code, message=message)
+        # MeshAPIError takes message positionally and error_code as a keyword arg.
+        super().__init__(message, status=0, error_code=code, request_id=request_id or "")
+        self.code = code  # convenience alias matching the wire field name
         self.param = param
-        self.request_id = request_id
 
     def __str__(self) -> str:
-        return f"realtime[{self.code}]: {self.message}"
+        return f"realtime[{self.code}]: {self.args[0]}"
 
 
 class RealtimeMessage:
@@ -95,7 +96,7 @@ class AsyncRealtimeSession:
             async for msg in session:
                 print(msg.event)
 
-    Or manage the lifecycle manually::
+    Or await it to get the session directly::
 
         session = await client.realtime.connect(model=...)
         try:
@@ -152,18 +153,29 @@ class AsyncRealtimeSession:
             pass
 
 
-class AsyncRealtimeResource:
-    """Async access to the MeshAPI realtime endpoint."""
+class _AsyncConnectionManager:
+    """Returned by :meth:`AsyncRealtimeResource.connect`.
 
-    def __init__(self, cfg: MeshAPIConfig) -> None:
+    Supports both ``async with`` and ``await`` so callers can choose::
+
+        # context manager style (recommended)
+        async with client.realtime.connect(model=...) as session:
+            ...
+
+        # manual style
+        session = await client.realtime.connect(model=...)
+        try:
+            ...
+        finally:
+            await session.close()
+    """
+
+    def __init__(self, cfg: MeshAPIConfig, model: str) -> None:
         self._cfg = cfg
+        self._model = model
+        self._session: AsyncRealtimeSession | None = None
 
-    async def connect(self, *, model: str) -> AsyncRealtimeSession:
-        """Open an async WebSocket session for *model*.
-
-        Returns an :class:`AsyncRealtimeSession` that can be used directly or
-        as an async context manager.
-        """
+    async def _do_connect(self) -> AsyncRealtimeSession:
         try:
             from websockets.asyncio.client import connect  # type: ignore[import]
         except ImportError:
@@ -175,7 +187,7 @@ class AsyncRealtimeResource:
                     "Install it with: pip install 'websockets>=12.0'"
                 ) from exc
 
-        ws_url = _ws_url(self._cfg.base_url, model)
+        ws_url = _ws_url(self._cfg.base_url, self._model)
         extra_headers = {
             "Sec-WebSocket-Protocol": f"openai-realtime, Bearer {self._cfg.token}",
             _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
@@ -186,6 +198,36 @@ class AsyncRealtimeResource:
             subprotocols=["openai-realtime"],
         )
         return AsyncRealtimeSession(ws)
+
+    def __await__(self):  # type: ignore[override]
+        return self._do_connect().__await__()
+
+    async def __aenter__(self) -> AsyncRealtimeSession:
+        self._session = await self._do_connect()
+        return self._session
+
+    async def __aexit__(self, *_: Any) -> None:
+        if self._session is not None:
+            await self._session.close()
+
+
+class AsyncRealtimeResource:
+    """Async access to the MeshAPI realtime endpoint."""
+
+    def __init__(self, cfg: MeshAPIConfig) -> None:
+        self._cfg = cfg
+
+    def connect(self, *, model: str) -> _AsyncConnectionManager:
+        """Return a connection manager for *model*.
+
+        Use as ``async with`` or ``await``::
+
+            async with client.realtime.connect(model=...) as session:
+                ...
+
+            session = await client.realtime.connect(model=...)
+        """
+        return _AsyncConnectionManager(self._cfg, model)
 
 
 # ---------------------------------------------------------------------------
