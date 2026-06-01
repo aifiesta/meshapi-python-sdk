@@ -93,7 +93,7 @@ Create `python/.env.livetest` (read automatically by the test harness) or export
 | `MESHAPI_INPUT_AUDIO_B64` | No | _(skipped if unset)_ | Base64-encoded audio for audio-input tests |
 | `MESHAPI_INPUT_AUDIO_FORMAT` | No | `wav` | Format of the base64 audio (`wav`, `mp3`, etc.) |
 | `MESHAPI_AUDIO_OUT_MODEL` | No | _(skipped if unset)_ | Model for audio-output tests; skipped if blank |
-| `MESHAPI_REALTIME_MODEL` | No | _(skipped if unset)_ | Realtime-capable model, e.g. `openai/gpt-4o-realtime-preview`; tests skipped if blank |
+| `MESHAPI_REALTIME_MODEL` | No | `openai/gpt-realtime-mini` | Realtime-capable model used in WebSocket live tests |
 
 Example `python/.env.livetest`:
 

@@ -9,12 +9,11 @@ from meshapi import MeshAPI, AsyncMeshAPI
 from meshapi.resources.realtime import RealtimeError
 
 
-REALTIME_MODEL = get_env("MESHAPI_REALTIME_MODEL", "")
+REALTIME_MODEL = get_env("MESHAPI_REALTIME_MODEL", "openai/gpt-realtime-mini")
 
 
 def skip_if_no_model():
-    if not REALTIME_MODEL:
-        pytest.skip("MESHAPI_REALTIME_MODEL not set — skipping realtime live tests")
+    pass  # default is openai/gpt-realtime-mini; override via MESHAPI_REALTIME_MODEL
 
 
 # ---------------------------------------------------------------------------
