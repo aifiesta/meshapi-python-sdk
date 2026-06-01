@@ -83,6 +83,11 @@ def image_gen_model() -> str | None:
     return get_env("MESHAPI_IMAGE_GEN_MODEL")
 
 
+@pytest.fixture(scope="session")
+def realtime_model() -> str | None:
+    return get_env("MESHAPI_REALTIME_MODEL")
+
+
 # ---------------------------------------------------------------------------
 # Helpers available as fixtures
 # ---------------------------------------------------------------------------

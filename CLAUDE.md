@@ -93,6 +93,7 @@ Create `python/.env.livetest` (read automatically by the test harness) or export
 | `MESHAPI_INPUT_AUDIO_B64` | No | _(skipped if unset)_ | Base64-encoded audio for audio-input tests |
 | `MESHAPI_INPUT_AUDIO_FORMAT` | No | `wav` | Format of the base64 audio (`wav`, `mp3`, etc.) |
 | `MESHAPI_AUDIO_OUT_MODEL` | No | _(skipped if unset)_ | Model for audio-output tests; skipped if blank |
+| `MESHAPI_REALTIME_MODEL` | No | _(skipped if unset)_ | Realtime-capable model, e.g. `openai/gpt-4o-realtime-preview`; tests skipped if blank |
 
 Example `python/.env.livetest`:
 
@@ -144,6 +145,7 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_errors.py` | 401/404 error handling |
 | `test_feature_matrix.py` | Cross-model feature matrix |
 | `test_rag.py` | RAG upload → embed → list → search |
+| `test_realtime.py` | WebSocket connect/close, session.created, session.update, error envelopes, iterator API, async variants |
 
 ### RAG live test notes
 
