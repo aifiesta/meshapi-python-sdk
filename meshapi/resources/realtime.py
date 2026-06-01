@@ -188,14 +188,14 @@ class _AsyncConnectionManager:
                 ) from exc
 
         ws_url = _ws_url(self._cfg.base_url, self._model)
-        extra_headers = {
-            "Sec-WebSocket-Protocol": f"openai-realtime, Bearer {self._cfg.token}",
-            _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
-        }
+        extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
         ws = await connect(
             ws_url,
             additional_headers=extra_headers,
-            subprotocols=["openai-realtime"],
+            # Auth is carried in the subprotocol list: "openai-realtime, Bearer <token>".
+            # Passing it as a separate Sec-WebSocket-Protocol header conflicts with the
+            # subprotocols parameter — the library overwrites the header, dropping the token.
+            subprotocols=["openai-realtime", f"Bearer {self._cfg.token}"],
         )
         return AsyncRealtimeSession(ws)
 
@@ -315,13 +315,10 @@ class RealtimeResource:
             ) from exc
 
         ws_url = _ws_url(self._cfg.base_url, model)
-        extra_headers = {
-            "Sec-WebSocket-Protocol": f"openai-realtime, Bearer {self._cfg.token}",
-            _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
-        }
+        extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
         ws = connect(
             ws_url,
             additional_headers=extra_headers,
-            subprotocols=["openai-realtime"],
+            subprotocols=["openai-realtime", f"Bearer {self._cfg.token}"],
         )
         return RealtimeSession(ws)
