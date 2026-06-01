@@ -46,7 +46,10 @@ def test_realtime_send_session_update(client: MeshAPI) -> None:
         session.send(
             {
                 "type": "session.update",
-                "session": {"instructions": "You are a helpful assistant."},
+                "session": {
+                    "type": "session",
+                    "instructions": "You are a helpful assistant.",
+                },
             }
         )
         msg = session.receive()
