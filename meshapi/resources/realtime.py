@@ -142,7 +142,9 @@ class AsyncRealtimeSession:
         try:
             while True:
                 yield await self.receive()
-        except Exception:  # noqa: BLE001 — connection closed or error envelope
+        except RealtimeError:
+            raise
+        except Exception:  # noqa: BLE001 — connection closed (ConnectionClosed, OSError, etc.)
             return
 
     async def close(self) -> None:
