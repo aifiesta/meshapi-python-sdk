@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional
+
+import httpx
 
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import (
@@ -46,6 +48,24 @@ class RagResource:
         data = self._http.post("/v1/files/search", params.model_dump(exclude_none=True))
         return SearchResponse.model_validate(data)
 
+    def upload_file(
+        self,
+        *,
+        file_name: str,
+        mime_type: str,
+        content: bytes,
+        embed: Optional[bool] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> InitUploadResponse:
+        """Convenience wrapper: calls init_upload then PUTs the file content to
+        the signed URL in one step. Returns the InitUploadResponse with file_id."""
+        upload = self.init_upload(
+            InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
+        )
+        resp = httpx.put(upload.signed_url, content=content, headers={"Content-Type": mime_type})
+        resp.raise_for_status()
+        return upload
+
 
 class AsyncRagResource:
     def __init__(self, http: AsyncHttpClient) -> None:
@@ -75,3 +95,22 @@ class AsyncRagResource:
     async def search(self, params: SearchRequest) -> SearchResponse:
         data = await self._http.post("/v1/files/search", params.model_dump(exclude_none=True))
         return SearchResponse.model_validate(data)
+
+    async def upload_file(
+        self,
+        *,
+        file_name: str,
+        mime_type: str,
+        content: bytes,
+        embed: Optional[bool] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> InitUploadResponse:
+        """Convenience wrapper: calls init_upload then PUTs the file content to
+        the signed URL in one step. Returns the InitUploadResponse with file_id."""
+        upload = await self.init_upload(
+            InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
+        )
+        async with httpx.AsyncClient() as client:
+            resp = await client.put(upload.signed_url, content=content, headers={"Content-Type": mime_type})
+        resp.raise_for_status()
+        return upload
