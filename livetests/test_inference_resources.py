@@ -17,12 +17,16 @@ from meshapi import (
 )
 
 
-def _batch_requests(tag: str, model: str) -> list[BatchRequestItem]:
+# Not all models support the Batch API; this one is known to have batching enabled.
+_BATCH_MODEL = "openai/gpt-5-nano"
+
+
+def _batch_requests(tag: str) -> list[BatchRequestItem]:
     return [
         BatchRequestItem(
             custom_id=f"{tag}-1",
             body={
-                "model": model,
+                "model": _BATCH_MODEL,
                 "messages": [{"role": "user", "content": "Reply with the single word: hello"}],
                 "max_tokens": 16,
             },
@@ -30,7 +34,7 @@ def _batch_requests(tag: str, model: str) -> list[BatchRequestItem]:
         BatchRequestItem(
             custom_id=f"{tag}-2",
             body={
-                "model": model,
+                "model": _BATCH_MODEL,
                 "messages": [{"role": "user", "content": "Reply with the single word: world"}],
                 "max_tokens": 16,
             },
@@ -109,13 +113,13 @@ def test_compare_stream(client: MeshAPI, model: str, second_model: str) -> None:
     assert events, "expected at least one compare stream event"
 
 
-def test_batches_lifecycle(client: MeshAPI, model: str, unique_tag: str) -> None:
+def test_batches_lifecycle(client: MeshAPI, unique_tag: str) -> None:
     file_tag = f"{unique_tag}-batch"
 
     # Create batch with inline requests (no file upload step required)
     batch = client.batches.create(
         CreateBatchParams(
-            requests=_batch_requests(file_tag, model),
+            requests=_batch_requests(file_tag),
             metadata={"suite": "python-livetest"},
         )
     )
