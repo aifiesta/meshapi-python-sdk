@@ -187,13 +187,17 @@ class _AsyncConnectionManager:
             ) from exc
 
         ws_url = _ws_url(self._cfg.base_url, self._model)
-        extra_headers = {
-            # Full value in one header — omitting subprotocols= so the library does
-            # not generate a second Sec-WebSocket-Protocol line and produce duplicates.
-            "Sec-WebSocket-Protocol": f"openai-realtime, Bearer {self._cfg.token}",
-            _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
-        }
-        ws = await connect(ws_url, additional_headers=extra_headers)
+        extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
+        ws = await connect(
+            ws_url,
+            additional_headers=extra_headers,
+            # Auth token travels as a second subprotocol entry so the library
+            # builds the Sec-WebSocket-Protocol header itself and can validate
+            # the server's echo against the registered list without error.
+            # Do NOT also set Sec-WebSocket-Protocol in additional_headers —
+            # that produces a duplicate header on the HTTP upgrade request.
+            subprotocols=["openai-realtime", f"Bearer {self._cfg.token}"],
+        )
         return AsyncRealtimeSession(ws)
 
     def __await__(self):  # type: ignore[override]
@@ -314,9 +318,10 @@ class RealtimeResource:
             ) from exc
 
         ws_url = _ws_url(self._cfg.base_url, model)
-        extra_headers = {
-            "Sec-WebSocket-Protocol": f"openai-realtime, Bearer {self._cfg.token}",
-            _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
-        }
-        ws = connect(ws_url, additional_headers=extra_headers)
+        extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
+        ws = connect(
+            ws_url,
+            additional_headers=extra_headers,
+            subprotocols=["openai-realtime", f"Bearer {self._cfg.token}"],
+        )
         return RealtimeSession(ws)
