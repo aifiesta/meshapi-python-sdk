@@ -9,6 +9,9 @@ from ._http import AsyncHttpClient, MeshAPIConfig, SyncHttpClient
 from ._types import (
     ApiErrorBody,
     ApiErrorEnvelope,
+    BulkEmbedRequest,
+    BulkEmbedResponse,
+    BulkEmbedResult,
     ChatCompletionChunk,
     ChatCompletionChunkChoice,
     ChatCompletionChunkDelta,
@@ -31,7 +34,8 @@ from ._types import (
     EmbeddingsParams,
     EmbeddingsResponse,
     EmbeddingsUsage,
-    FileObject,
+    InitUploadRequest,
+    InitUploadResponse,
     ImageDetail,
     ImageGenerationParams,
     ImageGenerationResponse,
@@ -47,6 +51,11 @@ from ._types import (
     BatchObject,
     BatchRequestItem,
     ProviderPreferences,
+    RagFileListResponse,
+    RagFileStatus,
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
     ResponsesFunctionTool,
     ResponsesParams,
     ResponsesResponse,
@@ -61,7 +70,6 @@ from ._types import (
     ToolChoiceFunction,
     ToolChoiceObject,
     ToolFunction,
-    UploadBatchFileParams,
     AudioOutputOptions,
     BuiltinTool,
     UpdateTemplateParams,
@@ -72,7 +80,7 @@ from .resources.chat import AsyncChatResource, ChatResource
 from .resources.compare import AsyncCompareResource, CompareResource
 from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
 from .resources.images import AsyncImagesResource, ImagesResource
-from .resources.files import AsyncFilesResource, FilesResource
+from .resources.rag import AsyncRagResource, RagResource
 from .resources.models import AsyncModelsResource, ModelsResource
 from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
@@ -133,8 +141,6 @@ __all__ = [
     "CompareResponse",
     "CompareStreamEvent",
     "BatchRequestItem",
-    "UploadBatchFileParams",
-    "FileObject",
     "CreateBatchParams",
     "BatchObject",
     "BatchListResponse",
@@ -144,6 +150,19 @@ __all__ = [
     "TemplateSummary",
     "ApiErrorBody",
     "ApiErrorEnvelope",
+    # RAG
+    "RagResource",
+    "AsyncRagResource",
+    "InitUploadRequest",
+    "InitUploadResponse",
+    "RagFileStatus",
+    "RagFileListResponse",
+    "BulkEmbedRequest",
+    "BulkEmbedResult",
+    "BulkEmbedResponse",
+    "SearchRequest",
+    "SearchResult",
+    "SearchResponse",
 ]
 
 
@@ -188,11 +207,11 @@ class MeshAPI:
         self.responses = ResponsesResource(http)
         self.embeddings = EmbeddingsResource(http)
         self.compare = CompareResource(http)
-        self.files = FilesResource(http)
         self.batches = BatchesResource(http)
         self.models = ModelsResource(http)
         self.templates = TemplatesResource(http)
         self.images = ImagesResource(http)
+        self.rag = RagResource(http)
         self._http = http
 
     def close(self) -> None:
@@ -245,11 +264,11 @@ class AsyncMeshAPI:
         self.responses = AsyncResponsesResource(http)
         self.embeddings = AsyncEmbeddingsResource(http)
         self.compare = AsyncCompareResource(http)
-        self.files = AsyncFilesResource(http)
         self.batches = AsyncBatchesResource(http)
         self.models = AsyncModelsResource(http)
         self.templates = AsyncTemplatesResource(http)
         self.images = AsyncImagesResource(http)
+        self.rag = AsyncRagResource(http)
         self._http = http
 
     async def aclose(self) -> None:

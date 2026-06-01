@@ -528,29 +528,10 @@ class BatchRequestItem(BaseModel):
     body: Dict[str, Any]
 
 
-class UploadBatchFileParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    purpose: str = "batch"
-    requests: List[BatchRequestItem]
-
-
-class FileObject(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    id: str
-    object: Optional[str] = None
-    bytes: Optional[int] = None
-    created_at: Optional[int] = None
-    filename: Optional[str] = None
-    purpose: Optional[str] = None
-    status: Optional[str] = None
-    status_details: Optional[Any] = None
-
-
 class CreateBatchParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    input_file_id: str
-    endpoint: str
-    completion_window: str
+    requests: List[BatchRequestItem]
+    completion_window: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -640,6 +621,104 @@ class ImageGenerationChunk(BaseModel):
 # Error wire format
 # ---------------------------------------------------------------------------
 
+
+# ---------------------------------------------------------------------------
+# RAG (Retrieval-Augmented Generation)
+# ---------------------------------------------------------------------------
+
+
+class InitUploadRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    file_name: str
+    mime_type: str
+    embed: Optional[bool] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class InitUploadResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    file_id: str
+    signed_url: str
+    expires_at: str
+
+
+class RagFileStatus(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    file_id: str
+    upload_status: str
+    file_name: str
+    file_type: str
+    mime_type: str
+    size_bytes: Optional[int] = None
+    asset_url: Optional[str] = None
+    signed_url: Optional[str] = None
+    signed_url_expires_at: Optional[str] = None
+    embedding_status: str
+    created_at: str
+    updated_at: str
+    total_tokens: Optional[int] = None
+    total_cost_usd: Optional[float] = None
+    last_error_code: Optional[str] = None
+
+
+class RagFileListResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    files: List[RagFileStatus]
+    total: int
+    limit: int
+    offset: int
+
+
+class BulkEmbedRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    file_ids: List[str] = Field(..., min_length=1, max_length=100)
+    wait: Optional[bool] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class BulkEmbedResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    file_id: str
+    embedding_status: str
+    chunk_count: Optional[int] = None
+    error: Optional[str] = None
+
+
+class BulkEmbedResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    results: List[BulkEmbedResult]
+
+
+class SearchRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    query: str
+    top_k: Optional[int] = None
+    file_ids: Optional[List[str]] = None
+    filter: Optional[Dict[str, Any]] = None
+    date_from: Optional[int] = None
+    date_to: Optional[int] = None
+
+
+class SearchResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    score: float
+    text: str
+    parent_text: str
+    file_id: Optional[str] = None
+    file_name: Optional[str] = None
+    file_type: Optional[str] = None
+    mime_type: Optional[str] = None
+    chunk_index: Optional[int] = None
+    created_at: Optional[int] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SearchResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    results: List[SearchResult]
+
+
+# ---------------------------------------------------------------------------
 
 class ApiErrorBody(BaseModel):
     model_config = ConfigDict(extra="ignore")
