@@ -47,7 +47,7 @@ def test_realtime_send_session_update(client: MeshAPI) -> None:
             {
                 "type": "session.update",
                 "session": {
-                    "type": "session",
+                    "type": "realtime",
                     "instructions": "You are a helpful assistant.",
                 },
             }
