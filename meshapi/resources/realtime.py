@@ -280,7 +280,9 @@ class RealtimeSession:
         try:
             while True:
                 yield self.receive()
-        except Exception:  # noqa: BLE001 — connection closed or error envelope
+        except RealtimeError:
+            raise
+        except Exception:  # noqa: BLE001 — connection closed (ConnectionClosed, OSError, etc.)
             return
 
     def close(self) -> None:
