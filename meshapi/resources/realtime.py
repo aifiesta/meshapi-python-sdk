@@ -180,14 +180,11 @@ class _AsyncConnectionManager:
     async def _do_connect(self) -> AsyncRealtimeSession:
         try:
             from websockets.asyncio.client import connect  # type: ignore[import]
-        except ImportError:
-            try:
-                from websockets.legacy.client import connect  # type: ignore[import]
-            except ImportError as exc:
-                raise ImportError(
-                    "websockets>=12.0 is required for realtime support. "
-                    "Install it with: pip install 'websockets>=12.0'"
-                ) from exc
+        except ImportError as exc:
+            raise ImportError(
+                "websockets>=12.0 is required for realtime support. "
+                "Install it with: pip install 'meshapi[realtime]'"
+            ) from exc
 
         ws_url = _ws_url(self._cfg.base_url, self._model)
         extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
@@ -315,7 +312,7 @@ class RealtimeResource:
         except ImportError as exc:
             raise ImportError(
                 "websockets>=12.0 is required for realtime support. "
-                "Install it with: pip install 'websockets>=12.0'"
+                "Install it with: pip install 'meshapi[realtime]'"
             ) from exc
 
         ws_url = _ws_url(self._cfg.base_url, model)
