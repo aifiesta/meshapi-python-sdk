@@ -86,13 +86,14 @@ Create `python/.env.livetest` (read automatically by the test harness) or export
 | `MESHAPI_BASE_URL` | No | `http://localhost:8000` | Base URL of the MeshAPI gateway |
 | `MESHAPI_TOKEN` | **Yes** | hardcoded dev key | Data-plane API key (`rsk_...`) |
 | `MESHAPI_MODEL` | No | `openai/gpt-4o-mini` | Primary model used in chat/stream tests |
-| `MESHAPI_SECOND_MODEL` | No | `anthropic/claude-haiku-4-5` | Second model for compare tests |
+| `MESHAPI_SECOND_MODEL` | No | `anthropic/claude-haiku-4.5` | Second model for compare tests |
 | `MESHAPI_EMBEDDINGS_MODEL` | No | `openai/text-embedding-3-small` | Model used in embeddings tests |
 | `MESHAPI_IMAGE_GEN_MODEL` | No | _(skipped if unset)_ | Image generation model; test skipped if blank |
 | `MESHAPI_IMAGE_URL` | No | _(skipped if unset)_ | Publicly accessible image URL for vision tests |
 | `MESHAPI_INPUT_AUDIO_B64` | No | _(skipped if unset)_ | Base64-encoded audio for audio-input tests |
 | `MESHAPI_INPUT_AUDIO_FORMAT` | No | `wav` | Format of the base64 audio (`wav`, `mp3`, etc.) |
 | `MESHAPI_AUDIO_OUT_MODEL` | No | _(skipped if unset)_ | Model for audio-output tests; skipped if blank |
+| `MESHAPI_REALTIME_MODEL` | No | `openai/gpt-realtime-mini` | Realtime-capable model used in WebSocket live tests |
 
 Example `python/.env.livetest`:
 
@@ -144,6 +145,7 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_errors.py` | 401/404 error handling |
 | `test_feature_matrix.py` | Cross-model feature matrix |
 | `test_rag.py` | RAG upload → embed → list → search |
+| `test_realtime.py` | WebSocket connect/close, session.created, session.update, error envelopes, iterator API, async variants |
 
 ### RAG live test notes
 

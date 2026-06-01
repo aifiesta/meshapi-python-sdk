@@ -82,6 +82,14 @@ from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
 from .resources.images import AsyncImagesResource, ImagesResource
 from .resources.rag import AsyncRagResource, RagResource
 from .resources.models import AsyncModelsResource, ModelsResource
+from .resources.realtime import (
+    AsyncRealtimeResource,
+    AsyncRealtimeSession,
+    RealtimeError,
+    RealtimeMessage,
+    RealtimeResource,
+    RealtimeSession,
+)
 from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
@@ -150,6 +158,13 @@ __all__ = [
     "TemplateSummary",
     "ApiErrorBody",
     "ApiErrorEnvelope",
+    # Realtime
+    "RealtimeResource",
+    "AsyncRealtimeResource",
+    "RealtimeSession",
+    "AsyncRealtimeSession",
+    "RealtimeMessage",
+    "RealtimeError",
     # RAG
     "RagResource",
     "AsyncRagResource",
@@ -212,6 +227,7 @@ class MeshAPI:
         self.templates = TemplatesResource(http)
         self.images = ImagesResource(http)
         self.rag = RagResource(http)
+        self.realtime = RealtimeResource(config)
         self._http = http
 
     def close(self) -> None:
@@ -269,6 +285,7 @@ class AsyncMeshAPI:
         self.templates = AsyncTemplatesResource(http)
         self.images = AsyncImagesResource(http)
         self.rag = AsyncRagResource(http)
+        self.realtime = AsyncRealtimeResource(config)
         self._http = http
 
     async def aclose(self) -> None:

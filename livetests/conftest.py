@@ -54,7 +54,7 @@ def embeddings_model() -> str:
 @pytest.fixture(scope="session")
 def second_model() -> str:
     """A second distinct model for compare tests. Defaults to a different model from MODEL."""
-    default = "anthropic/claude-haiku-4-5" if MODEL == "openai/gpt-4o-mini" else "openai/gpt-4o-mini"
+    default = "anthropic/claude-haiku-4.5" if MODEL == "openai/gpt-4o-mini" else "openai/gpt-4o-mini"
     return get_env("MESHAPI_SECOND_MODEL", default)
 
 
@@ -81,6 +81,11 @@ def audio_out_model() -> str | None:
 @pytest.fixture(scope="session")
 def image_gen_model() -> str | None:
     return get_env("MESHAPI_IMAGE_GEN_MODEL")
+
+
+@pytest.fixture(scope="session")
+def realtime_model() -> str | None:
+    return get_env("MESHAPI_REALTIME_MODEL")
 
 
 # ---------------------------------------------------------------------------
