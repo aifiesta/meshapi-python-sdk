@@ -34,7 +34,6 @@ from ._types import (
     EmbeddingsParams,
     EmbeddingsResponse,
     EmbeddingsUsage,
-    FileObject,
     InitUploadRequest,
     InitUploadResponse,
     ImageDetail,
@@ -71,7 +70,6 @@ from ._types import (
     ToolChoiceFunction,
     ToolChoiceObject,
     ToolFunction,
-    UploadBatchFileParams,
     AudioOutputOptions,
     BuiltinTool,
     UpdateTemplateParams,
@@ -82,7 +80,6 @@ from .resources.chat import AsyncChatResource, ChatResource
 from .resources.compare import AsyncCompareResource, CompareResource
 from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
 from .resources.images import AsyncImagesResource, ImagesResource
-from .resources.files import AsyncFilesResource, FilesResource
 from .resources.rag import AsyncRagResource, RagResource
 from .resources.models import AsyncModelsResource, ModelsResource
 from .resources.responses import AsyncResponsesResource, ResponsesResource
@@ -144,8 +141,6 @@ __all__ = [
     "CompareResponse",
     "CompareStreamEvent",
     "BatchRequestItem",
-    "UploadBatchFileParams",
-    "FileObject",
     "CreateBatchParams",
     "BatchObject",
     "BatchListResponse",
@@ -212,7 +207,6 @@ class MeshAPI:
         self.responses = ResponsesResource(http)
         self.embeddings = EmbeddingsResource(http)
         self.compare = CompareResource(http)
-        self.files = FilesResource(http)
         self.batches = BatchesResource(http)
         self.models = ModelsResource(http)
         self.templates = TemplatesResource(http)
@@ -270,7 +264,6 @@ class AsyncMeshAPI:
         self.responses = AsyncResponsesResource(http)
         self.embeddings = AsyncEmbeddingsResource(http)
         self.compare = AsyncCompareResource(http)
-        self.files = AsyncFilesResource(http)
         self.batches = AsyncBatchesResource(http)
         self.models = AsyncModelsResource(http)
         self.templates = AsyncTemplatesResource(http)

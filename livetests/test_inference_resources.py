@@ -14,7 +14,6 @@ from meshapi import (
     CreateBatchParams,
     EmbeddingsParams,
     ResponsesParams,
-    UploadBatchFileParams,
 )
 
 
@@ -110,47 +109,26 @@ def test_compare_stream(client: MeshAPI, model: str, second_model: str) -> None:
     assert events, "expected at least one compare stream event"
 
 
-@pytest.mark.skip(reason="files/batches endpoint validation mismatch — needs API spec investigation")
-def test_files_and_batches_lifecycle(client: MeshAPI, model: str, unique_tag: str) -> None:
+def test_batches_lifecycle(client: MeshAPI, model: str, unique_tag: str) -> None:
     file_tag = f"{unique_tag}-batch"
 
-    uploaded = client.files.upload(
-        UploadBatchFileParams(requests=_batch_requests(file_tag, model))
-    )
-    assert uploaded.id, "expected file id after upload"
-
-    try:
-        fetched = client.files.get(uploaded.id)
-        assert fetched.id == uploaded.id
-
-        content = client.files.content(uploaded.id)
-        assert content, "expected non-empty file content"
-        assert f"{file_tag}-1".encode() in content
-
-        batch = client.batches.create(
-            CreateBatchParams(
-                input_file_id=uploaded.id,
-                endpoint="/v1/chat/completions",
-                completion_window="24h",
-                metadata={"suite": "python-livetest"},
-            )
+    # Create batch with inline requests (no file upload step required)
+    batch = client.batches.create(
+        CreateBatchParams(
+            requests=_batch_requests(file_tag, model),
+            metadata={"suite": "python-livetest"},
         )
-        assert batch.id, "expected batch id"
+    )
+    assert batch.id, "expected batch id"
 
-        batch_list = client.batches.list(limit=10)
-        assert any(item.id == batch.id for item in batch_list.data), "created batch not found in list"
+    batch_list = client.batches.list(limit=10)
+    assert any(item.id == batch.id for item in batch_list.data), "created batch not found in list"
 
-        got_batch = client.batches.get(batch.id)
-        assert got_batch.id == batch.id
+    got_batch = client.batches.get(batch.id)
+    assert got_batch.id == batch.id
 
-        cancelled = client.batches.cancel(batch.id)
-        assert cancelled.id == batch.id
-
-    finally:
-        try:
-            client.files.delete(uploaded.id)
-        except Exception:
-            pass
+    cancelled = client.batches.cancel(batch.id)
+    assert cancelled.id == batch.id
 
 
 def test_images_generate(client: MeshAPI, image_gen_model: str | None) -> None:

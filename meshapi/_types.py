@@ -528,29 +528,10 @@ class BatchRequestItem(BaseModel):
     body: Dict[str, Any]
 
 
-class UploadBatchFileParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    purpose: str = "batch"
-    requests: List[BatchRequestItem]
-
-
-class FileObject(BaseModel):
-    model_config = ConfigDict(extra="allow")
-    id: str
-    object: Optional[str] = None
-    bytes: Optional[int] = None
-    created_at: Optional[int] = None
-    filename: Optional[str] = None
-    purpose: Optional[str] = None
-    status: Optional[str] = None
-    status_details: Optional[Any] = None
-
-
 class CreateBatchParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    input_file_id: str
-    endpoint: str
-    completion_window: str
+    requests: List[BatchRequestItem]
+    completion_window: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
