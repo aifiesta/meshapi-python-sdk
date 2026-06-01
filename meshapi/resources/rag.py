@@ -63,7 +63,7 @@ class RagResource:
         upload = self.init_upload(
             InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
         )
-        resp = httpx.put(upload.signed_url, content=content, headers={"Content-Type": mime_type})
+        resp = httpx.put(upload.signed_url, content=content, headers={"Content-Type": mime_type}, timeout=self._http._config.timeout)
         resp.raise_for_status()
         return upload
 
