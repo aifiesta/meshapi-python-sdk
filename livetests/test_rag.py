@@ -48,9 +48,9 @@ def _find_file_in_list(client: MeshAPI, file_id: str) -> bool:
         page = client.rag.list(limit=page_size, offset=offset)
         if any(f.file_id == file_id for f in page.files):
             return True
-        offset += len(page.files)
-        if offset >= page.total:
+        if not page.files or offset + len(page.files) >= page.total:
             return False
+        offset += len(page.files)
 
 
 def test_rag_upload_embed_search(client: MeshAPI) -> None:
