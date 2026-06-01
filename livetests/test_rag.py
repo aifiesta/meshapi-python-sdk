@@ -23,7 +23,7 @@ MAX_EMBED_WAIT = 90  # seconds
 
 def _put_file(signed_url: str, content: bytes, mime_type: str) -> None:
     """PUT raw bytes to a signed URL."""
-    resp = httpx.put(signed_url, content=content, headers={"Content-Type": mime_type})
+    resp = httpx.put(signed_url, content=content, headers={"Content-Type": mime_type}, timeout=30.0)
     resp.raise_for_status()
 
 
