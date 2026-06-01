@@ -112,6 +112,6 @@ class AsyncRagResource:
             InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
         )
         async with httpx.AsyncClient() as client:
-            resp = await client.put(upload.signed_url, content=content, headers={"Content-Type": mime_type})
+            resp = await client.put(upload.signed_url, content=content, headers={"Content-Type": mime_type}, timeout=self._http._config.timeout)
         resp.raise_for_status()
         return upload
