@@ -54,7 +54,7 @@ def embeddings_model() -> str:
 @pytest.fixture(scope="session")
 def second_model() -> str:
     """A second distinct model for compare tests. Defaults to a different model from MODEL."""
-    default = "anthropic/claude-haiku-4-5" if MODEL == "openai/gpt-4o-mini" else "openai/gpt-4o-mini"
+    default = "anthropic/claude-haiku-4.5" if MODEL == "openai/gpt-4o-mini" else "openai/gpt-4o-mini"
     return get_env("MESHAPI_SECOND_MODEL", default)
 
 
