@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -37,7 +38,7 @@ class RagResource:
         return RagFileListResponse.model_validate(data)
 
     def get(self, file_id: str) -> RagFileStatus:
-        data = self._http.get(f"/v1/files/{file_id}")
+        data = self._http.get(f"/v1/files/{quote(file_id, safe='')}")
         return RagFileStatus.model_validate(data)
 
     def embed(self, params: BulkEmbedRequest) -> BulkEmbedResponse:
@@ -85,7 +86,7 @@ class AsyncRagResource:
         return RagFileListResponse.model_validate(data)
 
     async def get(self, file_id: str) -> RagFileStatus:
-        data = await self._http.get(f"/v1/files/{file_id}")
+        data = await self._http.get(f"/v1/files/{quote(file_id, safe='')}")
         return RagFileStatus.model_validate(data)
 
     async def embed(self, params: BulkEmbedRequest) -> BulkEmbedResponse:

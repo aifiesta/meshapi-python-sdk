@@ -40,6 +40,19 @@ def _poll_embedding(client: MeshAPI, file_id: str, max_wait: int = MAX_EMBED_WAI
     pytest.fail(f"embedding did not reach 'ready' within {max_wait}s for {file_id}")
 
 
+def _find_file_in_list(client: MeshAPI, file_id: str) -> bool:
+    """Paginate through all RAG files until file_id is found or the list is exhausted."""
+    page_size = 50
+    offset = 0
+    while True:
+        page = client.rag.list(limit=page_size, offset=offset)
+        if any(f.file_id == file_id for f in page.files):
+            return True
+        offset += len(page.files)
+        if offset >= page.total:
+            return False
+
+
 def test_rag_upload_embed_search(client: MeshAPI) -> None:
     file_name = f"py-livetest-{int(time.time())}.txt"
     content = RAG_TEST_CONTENT.encode()
@@ -51,6 +64,9 @@ def test_rag_upload_embed_search(client: MeshAPI) -> None:
     assert upload.file_id, "expected file_id"
     assert upload.signed_url, "expected signed_url"
     print(f"[PASS] rag.init_upload → file_id={upload.file_id!r}")
+
+    # Note: the RAG API has no DELETE endpoint, so uploaded files cannot be
+    # cleaned up programmatically. Each test run leaves one file in the account.
 
     # ── Step 2: PUT file content to signed URL ──
     _put_file(upload.signed_url, content, MIME_TYPE)
@@ -77,11 +93,11 @@ def test_rag_upload_embed_search(client: MeshAPI) -> None:
     _poll_embedding(client, upload.file_id)
     print(f"[PASS] embedding complete for {upload.file_id!r}")
 
-    # ── Step 6: List — file must appear ──
-    file_list = client.rag.list(limit=50)
-    ids = [f.file_id for f in file_list.files]
-    assert upload.file_id in ids, f"uploaded file {upload.file_id!r} not found in list"
-    print(f"[PASS] rag.list → {file_list.total} total files, uploaded file present")
+    # ── Step 6: List — paginate until file is found or all pages exhausted ──
+    assert _find_file_in_list(client, upload.file_id), (
+        f"uploaded file {upload.file_id!r} not found in list"
+    )
+    print(f"[PASS] rag.list → uploaded file present")
 
     # ── Step 7: Search ──
     search_resp = client.rag.search(
