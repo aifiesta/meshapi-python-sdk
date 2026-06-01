@@ -52,10 +52,13 @@ class RealtimeMessage:
         return f"RealtimeMessage(type={self.event.get('type')!r})" if self.event else "RealtimeMessage(text=...)"
 
 
-def _ws_url(base_url: str, model: str) -> str:
+def _ws_url(base_url: str, model: str, token: str) -> str:
     base = base_url.rstrip("/")
     base = base.replace("https://", "wss://", 1).replace("http://", "ws://", 1)
-    return f"{base}/v1/realtime?model={quote(model)}"
+    # Auth via ?api_key= avoids Sec-WebSocket-Protocol header conflicts:
+    # spaces in "Bearer <token>" are illegal in subprotocol names (RFC 6455),
+    # and additional_headers alone triggers NegotiationError on the echo check.
+    return f"{base}/v1/realtime?model={quote(model)}&api_key={quote(token)}"
 
 
 def _parse_frame(data: str | bytes) -> RealtimeMessage | None:
@@ -186,17 +189,12 @@ class _AsyncConnectionManager:
                 "Install it with: pip install 'meshapi[realtime]'"
             ) from exc
 
-        ws_url = _ws_url(self._cfg.base_url, self._model)
+        ws_url = _ws_url(self._cfg.base_url, self._model, self._cfg.token)
         extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
         ws = await connect(
             ws_url,
             additional_headers=extra_headers,
-            # Auth token travels as a second subprotocol entry so the library
-            # builds the Sec-WebSocket-Protocol header itself and can validate
-            # the server's echo against the registered list without error.
-            # Do NOT also set Sec-WebSocket-Protocol in additional_headers —
-            # that produces a duplicate header on the HTTP upgrade request.
-            subprotocols=["openai-realtime", f"Bearer {self._cfg.token}"],
+            subprotocols=["openai-realtime"],
         )
         return AsyncRealtimeSession(ws)
 
@@ -317,11 +315,11 @@ class RealtimeResource:
                 "Install it with: pip install 'meshapi[realtime]'"
             ) from exc
 
-        ws_url = _ws_url(self._cfg.base_url, model)
+        ws_url = _ws_url(self._cfg.base_url, model, self._cfg.token)
         extra_headers = {_SDK_VERSION_HEADER: _SDK_VERSION_VALUE}
         ws = connect(
             ws_url,
             additional_headers=extra_headers,
-            subprotocols=["openai-realtime", f"Bearer {self._cfg.token}"],
+            subprotocols=["openai-realtime"],
         )
         return RealtimeSession(ws)
