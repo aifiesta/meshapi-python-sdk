@@ -74,12 +74,20 @@ from ._types import (
     BuiltinTool,
     UpdateTemplateParams,
     UsageInfo,
+    VideoContentItem,
+    VideoGenerationParams,
+    CreateVideoGenerationResponse,
+    VideoTaskError,
+    VideoTaskContent,
+    VideoTaskUsage,
+    VideoTaskResponse,
 )
 from .resources.batches import AsyncBatchesResource, BatchesResource
 from .resources.chat import AsyncChatResource, ChatResource
 from .resources.compare import AsyncCompareResource, CompareResource
 from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
 from .resources.images import AsyncImagesResource, ImagesResource
+from .resources.videos import AsyncVideosResource, VideosResource
 from .resources.rag import AsyncRagResource, RagResource
 from .resources.models import AsyncModelsResource, ModelsResource
 from .resources.realtime import (
@@ -168,6 +176,16 @@ __all__ = [
     # RAG
     "RagResource",
     "AsyncRagResource",
+    # Video generation
+    "VideosResource",
+    "AsyncVideosResource",
+    "VideoContentItem",
+    "VideoGenerationParams",
+    "CreateVideoGenerationResponse",
+    "VideoTaskError",
+    "VideoTaskContent",
+    "VideoTaskUsage",
+    "VideoTaskResponse",
     "InitUploadRequest",
     "InitUploadResponse",
     "RagFileStatus",
@@ -226,6 +244,7 @@ class MeshAPI:
         self.models = ModelsResource(http)
         self.templates = TemplatesResource(http)
         self.images = ImagesResource(http)
+        self.videos = VideosResource(http)
         self.rag = RagResource(http)
         self.realtime = RealtimeResource(config)
         self._http = http
@@ -284,6 +303,7 @@ class AsyncMeshAPI:
         self.models = AsyncModelsResource(http)
         self.templates = AsyncTemplatesResource(http)
         self.images = AsyncImagesResource(http)
+        self.videos = AsyncVideosResource(http)
         self.rag = AsyncRagResource(http)
         self.realtime = AsyncRealtimeResource(config)
         self._http = http

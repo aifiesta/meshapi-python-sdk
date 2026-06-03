@@ -26,7 +26,8 @@ python/
 │       ├── batches.py     # /v1/batches
 │       ├── models.py      # /v1/models
 │       ├── templates.py   # /v1/templates
-│       └── images.py      # /v1/images/generations
+│       ├── images.py      # /v1/images/generations
+│       └── videos.py      # /v1/video/generations (BytePlus Seedance async)
 ├── tests/
 │   ├── unit/              # Fast, no-network tests
 │   ├── contract/          # Pydantic model parsing against local fixtures
@@ -94,6 +95,7 @@ Create `python/.env.livetest` (read automatically by the test harness) or export
 | `MESHAPI_INPUT_AUDIO_FORMAT` | No | `wav` | Format of the base64 audio (`wav`, `mp3`, etc.) |
 | `MESHAPI_AUDIO_OUT_MODEL` | No | _(skipped if unset)_ | Model for audio-output tests; skipped if blank |
 | `MESHAPI_REALTIME_MODEL` | No | `openai/gpt-realtime-mini` | Realtime-capable model used in WebSocket live tests |
+| `MESHAPI_VIDEO_GEN_MODEL` | No | _(skipped if unset)_ | BytePlus Seedance model for video generation tests; test skipped if blank |
 
 Example `python/.env.livetest`:
 
@@ -145,6 +147,7 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_errors.py` | 401/404 error handling |
 | `test_feature_matrix.py` | Cross-model feature matrix |
 | `test_rag.py` | RAG upload → embed → list → search |
+| `test_video.py` | Video generation create + poll lifecycle |
 | `test_realtime.py` | WebSocket connect/close, session.created, session.update, error envelopes, iterator API, async variants |
 
 ### RAG live test notes

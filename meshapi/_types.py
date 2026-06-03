@@ -733,3 +733,98 @@ class ApiErrorEnvelope(BaseModel):
     model_config = ConfigDict(extra="ignore")
     error: ApiErrorBody
     request_id: str
+
+
+# ── Video generation ──────────────────────────────────────────────────────────
+
+
+class VideoContentItem(BaseModel):
+    """A single item in the content array passed to the video generation API."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: str
+    text: Optional[str] = None
+    image_url: Optional[Dict[str, Any]] = None
+    video_url: Optional[Dict[str, Any]] = None
+    audio_url: Optional[Dict[str, Any]] = None
+    draft_task: Optional[Dict[str, Any]] = None
+    role: Optional[str] = None
+
+
+class VideoGenerationParams(BaseModel):
+    """Request body for POST /v1/video/generations."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    model: str
+    content: List[VideoContentItem]
+    callback_url: Optional[str] = None
+    return_last_frame: Optional[bool] = None
+    service_tier: Optional[str] = None
+    execution_expires_after: Optional[int] = None
+    generate_audio: Optional[bool] = None
+    draft: Optional[bool] = None
+    resolution: Optional[str] = None
+    ratio: Optional[str] = None
+    duration: Optional[int] = None
+    frames: Optional[int] = None
+    seed: Optional[int] = None
+    camera_fixed: Optional[bool] = None
+    watermark: Optional[bool] = None
+    safety_identifier: Optional[str] = None
+    priority: Optional[int] = None
+
+
+class CreateVideoGenerationResponse(BaseModel):
+    """Response from POST /v1/video/generations — just the task ID."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+
+
+class VideoTaskError(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    code: str
+    message: str
+
+
+class VideoTaskContent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    video_url: Optional[str] = None
+    last_frame_url: Optional[str] = None
+
+
+class VideoTaskUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    completion_tokens: int
+    total_tokens: int
+
+
+class VideoTaskResponse(BaseModel):
+    """Response from GET /v1/video/generations/{task_id}."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    model: Optional[str] = None
+    status: str  # queued | running | cancelled | succeeded | failed | expired
+    error: Optional[VideoTaskError] = None
+    created_at: Optional[int] = None
+    updated_at: Optional[int] = None
+    content: Optional[VideoTaskContent] = None
+    seed: Optional[int] = None
+    resolution: Optional[str] = None
+    ratio: Optional[str] = None
+    duration: Optional[int] = None
+    frames: Optional[int] = None
+    framespersecond: Optional[int] = None
+    generate_audio: Optional[bool] = None
+    safety_identifier: Optional[str] = None
+    priority: Optional[int] = None
+    draft: Optional[bool] = None
+    draft_task_id: Optional[str] = None
+    service_tier: Optional[str] = None
+    execution_expires_after: Optional[int] = None
+    usage: Optional[VideoTaskUsage] = None
