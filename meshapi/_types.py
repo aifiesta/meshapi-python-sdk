@@ -152,6 +152,7 @@ class ChatCompletionParams(BaseModel):
     seed: Optional[int] = None
     tools: Optional[List[Tool]] = None
     tool_choice: Optional[ToolChoice] = None
+    response_format: Optional[Dict[str, Any]] = None
 
     user: Optional[str] = None
     modality: Optional[Literal["text", "image"]] = None
