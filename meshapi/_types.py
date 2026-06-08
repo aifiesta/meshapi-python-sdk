@@ -152,6 +152,7 @@ class ChatCompletionParams(BaseModel):
     seed: Optional[int] = None
     tools: Optional[List[Tool]] = None
     tool_choice: Optional[ToolChoice] = None
+    response_format: Optional[Dict[str, Any]] = None
 
     user: Optional[str] = None
     modality: Optional[Literal["text", "image"]] = None
@@ -159,6 +160,12 @@ class ChatCompletionParams(BaseModel):
     async_mode: Optional[bool] = None
     modalities: Optional[List[Literal["text", "audio"]]] = None
     audio: Optional[AudioOutputOptions] = None
+
+    # MeshAPI extension — overrides the server's 300 s upstream-provider timeout.
+    # Set this when your request may take longer than 5 minutes (e.g. long reasoning
+    # chains). The SDK-level timeout (MeshAPI(timeout=…)) is a separate HTTP-client
+    # timeout and does not affect this value.
+    timeout: Optional[float] = Field(default=None, gt=0)
 
 
 class UsageInfo(BaseModel):
@@ -399,6 +406,7 @@ class ResponsesParams(BaseModel):
     tool_choice: Optional[Union[str, Dict[str, Any]]] = None
     response_format: Optional[Dict[str, Any]] = None
     user: Optional[str] = Field(default=None, max_length=256)
+    timeout: Optional[float] = Field(default=None, gt=0)
 
 
 class ResponsesUsage(BaseModel):

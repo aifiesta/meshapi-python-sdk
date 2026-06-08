@@ -102,7 +102,7 @@ def test_rag_upload_embed_search(client: MeshAPI) -> None:
     # ── Step 7: Search ──
     search_resp = client.rag.search(
         SearchRequest(
-            query="meshapi rag livetest py",
+            query="summary",
             top_k=5,
             file_ids=[upload.file_id],
         )

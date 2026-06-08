@@ -80,7 +80,7 @@ def test_template_get_path():
 
     mock_http = MagicMock()
     mock_http.get.return_value = {
-        "id": "abc", "name": "t", "owner": "u",
+        "id": "abc", "name": "t", "owner": "u", "is_global": False,
         "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z"
     }
     resource = TemplatesResource(mock_http)

@@ -98,7 +98,6 @@ def test_compare_create(client: MeshAPI, model: str, second_model: str) -> None:
     assert len(result.results) == 2, f"expected 2 results, got {len(result.results)}"
 
 
-@pytest.mark.xfail(reason="server-side SQLAlchemy session concurrency issue when compare tests run back-to-back")
 def test_compare_stream(client: MeshAPI, model: str, second_model: str) -> None:
     events = list(
         client.compare.stream(
