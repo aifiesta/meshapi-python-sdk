@@ -36,7 +36,7 @@ def test_structured_output_fields(client: MeshAPI, so_model: str) -> None:
             model=so_model,
             messages=[ChatMessage(role="user", content="What is the capital of France? Use the provided schema.")],
             response_format=_SCHEMA,
-            max_tokens=100,
+            max_tokens=1000,
             temperature=0,
         )
     )
@@ -73,7 +73,7 @@ def test_structured_output_finish_reason(client: MeshAPI, so_model: str) -> None
                     },
                 },
             },
-            max_tokens=100,
+            max_tokens=1000,
             temperature=0,
         )
     )
