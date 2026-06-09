@@ -10,6 +10,13 @@ from ._types import (
     ApiErrorBody,
     ApiErrorEnvelope,
     BulkEmbedRequest,
+    ListVoicesParams,
+    PronunciationDictionaryLocator,
+    SpeechParams,
+    TranscriptionParams,
+    TranscriptionResponse,
+    TranscriptionTranslateParams,
+    VoiceSettings,
     BulkEmbedResponse,
     BulkEmbedResult,
     ChatCompletionChunk,
@@ -42,6 +49,15 @@ from ._types import (
     ImageItem,
     ImageOptions,
     ImageUsage,
+    CreateVideoGenerationResponse,
+    ListVideoGenerationsParams,
+    VideoContentItem,
+    VideoGenerationParams,
+    VideoTaskContent,
+    VideoTaskError,
+    VideoTaskListResponse,
+    VideoTaskResponse,
+    VideoTaskUsage,
     InputAudio,
     ListModelsParams,
     ModelOverride,
@@ -75,6 +91,8 @@ from ._types import (
     UpdateTemplateParams,
     UsageInfo,
 )
+from .resources.audio import AsyncAudioResource, AudioResource
+from .resources.videos import AsyncVideosResource, VideosResource
 from .resources.batches import AsyncBatchesResource, BatchesResource
 from .resources.chat import AsyncChatResource, ChatResource
 from .resources.compare import AsyncCompareResource, CompareResource
@@ -178,6 +196,28 @@ __all__ = [
     "SearchRequest",
     "SearchResult",
     "SearchResponse",
+    # Video
+    "VideosResource",
+    "AsyncVideosResource",
+    "CreateVideoGenerationResponse",
+    "ListVideoGenerationsParams",
+    "VideoContentItem",
+    "VideoGenerationParams",
+    "VideoTaskContent",
+    "VideoTaskError",
+    "VideoTaskListResponse",
+    "VideoTaskResponse",
+    "VideoTaskUsage",
+    # Audio
+    "AudioResource",
+    "AsyncAudioResource",
+    "SpeechParams",
+    "VoiceSettings",
+    "PronunciationDictionaryLocator",
+    "TranscriptionParams",
+    "TranscriptionTranslateParams",
+    "TranscriptionResponse",
+    "ListVoicesParams",
 ]
 
 
@@ -226,6 +266,8 @@ class MeshAPI:
         self.models = ModelsResource(http)
         self.templates = TemplatesResource(http)
         self.images = ImagesResource(http)
+        self.videos = VideosResource(http)
+        self.audio = AudioResource(http)
         self.rag = RagResource(http)
         self.realtime = RealtimeResource(config)
         self._http = http
@@ -284,6 +326,8 @@ class AsyncMeshAPI:
         self.models = AsyncModelsResource(http)
         self.templates = AsyncTemplatesResource(http)
         self.images = AsyncImagesResource(http)
+        self.videos = AsyncVideosResource(http)
+        self.audio = AsyncAudioResource(http)
         self.rag = AsyncRagResource(http)
         self.realtime = AsyncRealtimeResource(config)
         self._http = http

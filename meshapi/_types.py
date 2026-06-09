@@ -625,6 +625,113 @@ class ImageGenerationChunk(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Video
+# ---------------------------------------------------------------------------
+
+
+class VideoContentItem(BaseModel):
+    """A single item in the content array (text, image_url, video_url, audio_url)."""
+    model_config = ConfigDict(extra="ignore")
+    type: str
+    text: Optional[str] = None
+    image_url: Optional[Dict[str, Any]] = None
+    video_url: Optional[Dict[str, Any]] = None
+    audio_url: Optional[Dict[str, Any]] = None
+    draft_task: Optional[Dict[str, Any]] = None
+    role: Optional[str] = None
+
+
+class VideoGenerationParams(BaseModel):
+    """Request body for POST /v1/video/generations."""
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    content: List[VideoContentItem]
+    callback_url: Optional[str] = None
+    return_last_frame: Optional[bool] = None
+    service_tier: Optional[str] = None
+    execution_expires_after: Optional[int] = None
+    generate_audio: Optional[bool] = None
+    draft: Optional[bool] = None
+    resolution: Optional[str] = None
+    ratio: Optional[str] = None
+    duration: Optional[int] = None
+    frames: Optional[int] = None
+    seed: Optional[int] = None
+    camera_fixed: Optional[bool] = None
+    watermark: Optional[bool] = None
+    safety_identifier: Optional[str] = None
+    priority: Optional[int] = None
+
+
+class CreateVideoGenerationResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+
+
+class VideoTaskError(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    code: str
+    message: str
+
+
+class VideoTaskContent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    video_url: Optional[str] = None
+    last_frame_url: Optional[str] = None
+
+
+class VideoTaskUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    completion_tokens: int
+    total_tokens: int
+
+
+class VideoTaskResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    status: str
+    model: Optional[str] = None
+    error: Optional[VideoTaskError] = None
+    created_at: Optional[int] = None
+    updated_at: Optional[int] = None
+    content: Optional[VideoTaskContent] = None
+    seed: Optional[int] = None
+    resolution: Optional[str] = None
+    ratio: Optional[str] = None
+    duration: Optional[int] = None
+    frames: Optional[int] = None
+    framespersecond: Optional[int] = None
+    generate_audio: Optional[bool] = None
+    safety_identifier: Optional[str] = None
+    priority: Optional[int] = None
+    draft: Optional[bool] = None
+    draft_task_id: Optional[str] = None
+    service_tier: Optional[str] = None
+    execution_expires_after: Optional[int] = None
+    usage: Optional[VideoTaskUsage] = None
+
+
+class ListVideoGenerationsParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    status: Optional[str] = None
+    model: Optional[str] = None
+    created_after: Optional[str] = None
+    created_before: Optional[str] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+
+
+class VideoTaskListResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    object: Optional[str] = None
+    data: List[VideoTaskResponse]
+    has_more: bool
+    total: int
+    limit: int
+    offset: int
+
+
+# ---------------------------------------------------------------------------
 
 # Error wire format
 # ---------------------------------------------------------------------------
@@ -724,6 +831,108 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     results: List[SearchResult]
+
+
+# ---------------------------------------------------------------------------
+# Audio
+# ---------------------------------------------------------------------------
+
+
+class VoiceSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    stability: Optional[float] = None
+    similarity_boost: Optional[float] = None
+    style: Optional[float] = None
+    use_speaker_boost: Optional[bool] = None
+    speed: Optional[float] = None
+
+
+class PronunciationDictionaryLocator(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    pronunciation_dictionary_id: str
+    version_id: str
+
+
+class SpeechParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    input: str
+    model: Optional[str] = None
+    voice: Optional[str] = None
+    stream: Optional[bool] = None
+    response_format: Optional[str] = None
+    language_code: Optional[str] = None
+    voice_settings: Optional[VoiceSettings] = None
+    pronunciation_dictionary_locators: Optional[List[PronunciationDictionaryLocator]] = None
+    seed: Optional[int] = None
+    previous_text: Optional[str] = None
+    next_text: Optional[str] = None
+    previous_request_ids: Optional[List[str]] = None
+    next_request_ids: Optional[List[str]] = None
+    apply_text_normalization: Optional[str] = None
+    apply_language_text_normalization: Optional[bool] = None
+    use_pvc_as_ivc: Optional[bool] = None
+    enable_logging: Optional[bool] = None
+    optimize_streaming_latency: Optional[int] = None
+    speaker: Optional[str] = None
+    target_language_code: Optional[str] = None
+    pitch: Optional[float] = None
+    pace: Optional[float] = None
+    loudness: Optional[float] = None
+    speech_sample_rate: Optional[int] = None
+    enable_preprocessing: Optional[bool] = None
+
+
+class TranscriptionParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    language_code: Optional[str] = None
+    tag_audio_events: Optional[bool] = None
+    num_speakers: Optional[int] = None
+    timestamps_granularity: Optional[str] = None
+    diarize: Optional[bool] = None
+    diarization_threshold: Optional[float] = None
+    additional_formats: Optional[str] = None
+    file_format: Optional[str] = None
+    cloud_storage_url: Optional[str] = None
+    source_url: Optional[str] = None
+    webhook: Optional[bool] = None
+    webhook_id: Optional[str] = None
+    temperature: Optional[float] = None
+    seed: Optional[int] = None
+    use_multi_channel: Optional[bool] = None
+    webhook_metadata: Optional[str] = None
+    entity_detection: Optional[str] = None
+    no_verbatim: Optional[bool] = None
+    detect_speaker_roles: Optional[bool] = None
+    entity_redaction: Optional[str] = None
+    entity_redaction_mode: Optional[str] = None
+    keyterms: Optional[List[str]] = None
+    with_timestamps: Optional[bool] = None
+    debug_mode: Optional[bool] = None
+
+
+class TranscriptionTranslateParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: Optional[str] = None
+    prompt: Optional[str] = None
+
+
+class TranscriptionResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    text: str
+
+
+class ListVoicesParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    next_page_token: Optional[str] = None
+    page_size: Optional[int] = None
+    search: Optional[str] = None
+    sort: Optional[str] = None
+    sort_direction: Optional[str] = None
+    voice_type: Optional[str] = None
+    category: Optional[str] = None
+    include_total_count: Optional[bool] = None
+    voice_ids: Optional[List[str]] = None
 
 
 # ---------------------------------------------------------------------------
