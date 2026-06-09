@@ -373,6 +373,23 @@ class SyncHttpClient:
         response = self._request("GET", path, params=params)
         return response.content
 
+    def post_bytes(self, path: str, body: Any) -> bytes:
+        response = self._request("POST", path, json_body=body)
+        return response.content
+
+    def post_multipart(self, path: str, fields: Dict[str, Any], file_data: Optional[tuple] = None, file_field: str = "file") -> Any:
+        headers = {k: v for k, v in self._headers().items() if k != "Content-Type"}
+        files = None
+        data = None
+        if file_data is not None:
+            files = {file_field: file_data}
+            data = {k: str(v) for k, v in fields.items() if v is not None}
+        else:
+            data = {k: str(v) for k, v in fields.items() if v is not None}
+        response = self._client.post(path, headers=headers, data=data, files=files)
+        _raise_for_status(response)
+        return response.json()
+
     def stream(self, path: str, body: Any) -> Iterator[ChatCompletionChunk]:
         with self._client.stream(
             "POST", path, json=body, headers=self._headers()
@@ -479,6 +496,23 @@ class AsyncHttpClient:
     ) -> bytes:
         response = await self._request("GET", path, params=params)
         return response.content
+
+    async def post_bytes(self, path: str, body: Any) -> bytes:
+        response = await self._request("POST", path, json_body=body)
+        return response.content
+
+    async def post_multipart(self, path: str, fields: Dict[str, Any], file_data: Optional[tuple] = None, file_field: str = "file") -> Any:
+        headers = {k: v for k, v in self._headers().items() if k != "Content-Type"}
+        files = None
+        data = None
+        if file_data is not None:
+            files = {file_field: file_data}
+            data = {k: str(v) for k, v in fields.items() if v is not None}
+        else:
+            data = {k: str(v) for k, v in fields.items() if v is not None}
+        response = await self._client.post(path, headers=headers, data=data, files=files)
+        _raise_for_status(response)
+        return response.json()
 
     async def stream(self, path: str, body: Any) -> AsyncIterator[ChatCompletionChunk]:
         async with self._client.stream(
