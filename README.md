@@ -43,6 +43,8 @@ Get a key at [meshapi.ai](https://meshapi.ai). Data-plane keys are prefixed `rsk
 | **Reasoning models** | First-class `responses` API with `reasoning.effort` and `max_output_tokens`. |
 | **Embeddings** | Drop-in OpenAI-compatible embeddings endpoint. |
 | **Multi-model compare** | Fire one prompt at N models in parallel and stream their replies side by side. |
+| **Audio** | Text-to-speech, speech-to-text, transcription translation, and voice listing. |
+| **Video** | Submit and poll async video generation tasks. |
 | **RAG** | Upload files, embed them, and run vector search — all through the same client. |
 | **Batches** | Async bulk inference jobs at discounted rates with inline request submission. |
 | **Prompt templates** | Server-stored prompts with `{{variable}}` slots. Update prompts without redeploying. |
@@ -160,6 +162,91 @@ result = client.embeddings.create(
     )
 )
 print(len(result.data[0].embedding))
+```
+
+## Audio (TTS, STT, voices)
+
+```python
+from meshapi import SpeechParams, TranscriptionParams, ListVoicesParams
+
+# Text-to-speech — returns raw audio bytes
+audio_bytes = client.audio.synthesize(
+    SpeechParams(
+        input="Hello from MeshAPI.",
+        model="sarvam/bulbul:v2",
+        voice="meera",
+    )
+)
+with open("output.wav", "wb") as f:
+    f.write(audio_bytes)
+
+# Speech-to-text — submit transcription job
+result = client.audio.transcribe(
+    TranscriptionParams(
+        model="sarvam/saaras:v3",
+        file=open("audio.wav", "rb").read(),
+        file_name="audio.wav",
+        language="en",
+    )
+)
+print(result.text)
+
+# Translate audio to English
+translated = client.audio.translate(
+    TranscriptionParams(
+        model="sarvam/saaras:v3",
+        file=open("audio.wav", "rb").read(),
+        file_name="audio.wav",
+    )
+)
+print(translated.text)
+
+# List available voices
+voices = client.audio.list_voices(ListVoicesParams(page_size=10))
+
+# Get a specific voice
+voice = client.audio.get_voice("voice-id")
+```
+
+### Async audio
+
+```python
+audio_bytes = await client.audio.synthesize(SpeechParams(input="Hello!", model="sarvam/bulbul:v2"))
+voices = await client.audio.list_voices(ListVoicesParams())
+```
+
+## Video generation
+
+```python
+from meshapi import VideoGenerationParams, VideoContentItem, ListVideoGenerationsParams
+import time
+
+# Submit a video generation task
+task = client.videos.generate(
+    VideoGenerationParams(
+        model="byteplus/dreamina-seedance-2-0",
+        content=[VideoContentItem(type="text", text="A serene mountain lake at sunrise")],
+    )
+)
+print(f"Task ID: {task.id}")
+
+# Poll until complete
+while True:
+    status = client.videos.retrieve(task.id)
+    if status.status in ("succeeded", "failed"):
+        break
+    time.sleep(5)
+
+# List past generation tasks
+listing = client.videos.list(ListVideoGenerationsParams(limit=20))
+print(f"{listing.total} total tasks")
+```
+
+### Async video
+
+```python
+task = await client.videos.generate(VideoGenerationParams(...))
+status = await client.videos.retrieve(task.id)
 ```
 
 ## Image generation
@@ -396,6 +483,13 @@ from meshapi import (
     RagFileStatus, RagFileListResponse,
     BulkEmbedRequest, BulkEmbedResponse,
     SearchRequest, SearchResponse, SearchResult,
+    # audio
+    SpeechParams, TranscriptionParams, TranscriptionTranslateParams,
+    TranscriptionResponse, ListVoicesParams,
+    # video
+    VideoGenerationParams, VideoContentItem,
+    CreateVideoGenerationResponse, VideoTaskResponse, VideoTaskListResponse,
+    ListVideoGenerationsParams,
     # models
     ModelInfo, ModelPricing,
     # templates

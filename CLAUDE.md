@@ -147,6 +147,35 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_rag.py` | RAG upload → embed → list → search |
 | `test_realtime.py` | WebSocket connect/close, session.created, session.update, error envelopes, iterator API, async variants |
 
+### Available live test files (updated)
+
+| File | What it tests |
+|------|---------------|
+| `test_chat.py` | Chat completions (basic, tools, multi-turn) |
+| `test_stream.py` | Streaming chat and responses |
+| `test_models.py` | Model listing |
+| `test_templates.py` | Template CRUD lifecycle |
+| `test_inference_resources.py` | Embeddings, responses |
+| `test_errors.py` | 401/404 error handling |
+| `test_feature_matrix.py` | Cross-model feature matrix |
+| `test_rag.py` | RAG upload → embed → list → search |
+| `test_realtime.py` | WebSocket connect/close, session lifecycle |
+| `test_audio.py` | TTS synthesize, voice listing |
+| `test_video.py` | Video list, generate → retrieve |
+
+---
+
+## Contribution checklist
+
+Every SDK change — however small — must include all of the following before merging:
+
+1. **Live tests** — add or update `livetests/test_<resource>.py` to cover the new/changed behaviour.
+2. **Unit / contract tests** — if the change affects request/response serialisation or error handling, add a test in `tests/unit/` or `tests/contract/`.
+3. **README** — update `README.md` with a usage example for any new or changed public surface.
+4. **meshapi-docs** — open a follow-up PR (or note in the PR description) to update the [meshapi-docs](https://github.com/aifiesta/meshapi-docs) repository so the developer documentation stays in sync.
+
+---
+
 ### RAG live test notes
 
 `test_rag_upload_embed_search` does the following:
