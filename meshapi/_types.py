@@ -935,6 +935,24 @@ class ListVoicesParams(BaseModel):
     voice_ids: Optional[List[str]] = None
 
 
+class Voice(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    voice_id: str
+    name: str
+    category: str
+    description: str
+    preview_url: str
+    labels: Dict[str, str] = {}
+
+
+class VoicesResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    voices: List[Voice]
+    has_more: bool
+    total_count: int
+    next_page_token: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
 
 class ApiErrorBody(BaseModel):

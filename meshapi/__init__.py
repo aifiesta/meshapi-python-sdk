@@ -16,6 +16,8 @@ from ._types import (
     TranscriptionParams,
     TranscriptionResponse,
     TranscriptionTranslateParams,
+    Voice,
+    VoicesResponse,
     VoiceSettings,
     BulkEmbedResponse,
     BulkEmbedResult,
@@ -218,6 +220,8 @@ __all__ = [
     "TranscriptionTranslateParams",
     "TranscriptionResponse",
     "ListVoicesParams",
+    "Voice",
+    "VoicesResponse",
 ]
 
 
