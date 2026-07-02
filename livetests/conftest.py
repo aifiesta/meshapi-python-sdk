@@ -31,6 +31,43 @@ from meshapi import MeshAPI  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
+# Strict-mode preflight (pre-hackathon gate)
+# ---------------------------------------------------------------------------
+#
+# Several feature tests skip-by-default when an env var is unset (image gen,
+# vision, audio in/out, video). A skipped test reads as "passed" — so a green
+# run can mean almost nothing ran. Set MESHAPI_STRICT_LIVETESTS=1 in the
+# pre-hackathon gate: the run fails fast unless every optional-feature env var
+# is present, forcing those tests to actually execute. See .env.livetest.example.
+
+# Env vars whose absence turns a real feature test into a silent skip.
+STRICT_REQUIRED_ENV = [
+    "MESHAPI_IMAGE_GEN_MODEL",
+    "MESHAPI_IMAGE_URL",
+    "MESHAPI_INPUT_AUDIO_B64",
+    "MESHAPI_AUDIO_OUT_MODEL",
+    "MESHAPI_VIDEO_GEN_MODEL",
+]
+
+
+def _strict_mode() -> bool:
+    return (os.getenv("MESHAPI_STRICT_LIVETESTS") or "").lower() in ("1", "true", "yes")
+
+
+def pytest_configure(config: "pytest.Config") -> None:
+    if not _strict_mode():
+        return
+    missing = [name for name in STRICT_REQUIRED_ENV if not get_env(name)]
+    if missing:
+        pytest.exit(
+            "MESHAPI_STRICT_LIVETESTS is set but these env vars are unset, so their "
+            "feature tests would silently skip:\n  - " + "\n  - ".join(missing) + "\n"
+            "Set them (see .env.livetest.example) or unset MESHAPI_STRICT_LIVETESTS.",
+            returncode=1,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Session-scoped shared client fixture
 # ---------------------------------------------------------------------------
 
