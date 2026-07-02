@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import os
 
+import pytest
 from meshapi import MeshAPI, VideoGenerationParams, VideoContentItem, ListVideoGenerationsParams
 
-VIDEO_MODEL = os.environ.get("MESHAPI_VIDEO_GEN_MODEL", "byteplus/dreamina-seedance-2-0")
+# No hardcoded fallback: video generation is costly, so the generate test only
+# runs when a model is explicitly configured (skipped in CI by default).
+VIDEO_MODEL = os.environ.get("MESHAPI_VIDEO_GEN_MODEL")
 
 
 def test_video_list(client: MeshAPI) -> None:
@@ -16,6 +19,8 @@ def test_video_list(client: MeshAPI) -> None:
 
 
 def test_video_generate_and_retrieve(client: MeshAPI) -> None:
+    if not VIDEO_MODEL:
+        pytest.skip("set MESHAPI_VIDEO_GEN_MODEL to run video generation (costly; skipped in CI by default)")
     params = VideoGenerationParams(
         model=VIDEO_MODEL,
         content=[VideoContentItem(type="text", text="A serene mountain lake at sunrise")],

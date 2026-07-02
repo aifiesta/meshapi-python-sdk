@@ -19,6 +19,9 @@ def test_audio_synthesize(client: MeshAPI) -> None:
 
 
 def test_audio_stt_from_tts(client: MeshAPI) -> None:
+    # NB: not forcing response_format — the TTS model (sarvam) rejects an
+    # explicit "wav" with a 422, and its default codec already transcribes
+    # end-to-end, so the round-trip is valid as-is.
     audio_bytes = client.audio.synthesize(
         SpeechParams(input="Hello from MeshAPI audio test.", model=TTS_MODEL)
     )
