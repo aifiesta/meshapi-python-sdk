@@ -23,10 +23,6 @@ from ._types import (
     BulkEmbedResponse,
     BulkEmbedResult,
     ChatCompletionChunk,
-    DocumentListResponse,
-    DocumentResponse,
-    GenerateDocumentRequest,
-    ListDocumentsParams,
     ChatCompletionChunkChoice,
     ChatCompletionChunkDelta,
     ChatCompletionChoice,
@@ -122,7 +118,6 @@ from ._types import (
     UsageInfo,
 )
 from .resources.audio import AsyncAudioResource, AudioResource
-from .resources.documents import AsyncDocumentsResource, DocumentsResource
 from .resources.videos import AsyncVideosResource, VideosResource
 from .resources.batches import AsyncBatchesResource, BatchesResource
 from .resources.chat import AsyncChatResource, ChatResource
@@ -145,7 +140,7 @@ from .resources.realtime import (
 from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 __all__ = [
     "__version__",
     "MeshAPI",
@@ -287,13 +282,6 @@ __all__ = [
     "ListVoicesParams",
     "Voice",
     "VoicesResponse",
-    # Documents
-    "DocumentsResource",
-    "AsyncDocumentsResource",
-    "GenerateDocumentRequest",
-    "ListDocumentsParams",
-    "DocumentResponse",
-    "DocumentListResponse",
 ]
 
 
@@ -343,7 +331,6 @@ class MeshAPI:
         self.templates = TemplatesResource(http)
         self.images = ImagesResource(http)
         self.videos = VideosResource(http)
-        self.documents = DocumentsResource(http)
         self.audio = AudioResource(http)
         self.rag = RagResource(http)
         self.moderations = ModerationsResource(http)
@@ -407,7 +394,6 @@ class AsyncMeshAPI:
         self.templates = AsyncTemplatesResource(http)
         self.images = AsyncImagesResource(http)
         self.videos = AsyncVideosResource(http)
-        self.documents = AsyncDocumentsResource(http)
         self.audio = AsyncAudioResource(http)
         self.rag = AsyncRagResource(http)
         self.moderations = AsyncModerationsResource(http)
