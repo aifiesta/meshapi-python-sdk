@@ -1,11 +1,16 @@
-"""Images resource — POST /v1/images/generations."""
+"""Images resource — POST /v1/images/generations, POST /v1/images/edits."""
 
 from __future__ import annotations
 
 from typing import AsyncIterator, Iterator
 
 from .._http import AsyncHttpClient, SyncHttpClient
-from .._types import ImageGenerationChunk, ImageGenerationParams, ImageGenerationResponse
+from .._types import (
+    ImageEditParams,
+    ImageGenerationChunk,
+    ImageGenerationParams,
+    ImageGenerationResponse,
+)
 
 
 class ImagesResource:
@@ -14,6 +19,10 @@ class ImagesResource:
 
     def generate(self, params: ImageGenerationParams) -> ImageGenerationResponse:
         data = self._http.post("/v1/images/generations", params.model_dump(exclude_none=True))
+        return ImageGenerationResponse.model_validate(data)
+
+    def edit(self, params: ImageEditParams) -> ImageGenerationResponse:
+        data = self._http.post("/v1/images/edits", params.model_dump(exclude_none=True))
         return ImageGenerationResponse.model_validate(data)
 
     def stream(self, params: ImageGenerationParams) -> Iterator[ImageGenerationChunk]:
@@ -28,6 +37,10 @@ class AsyncImagesResource:
 
     async def generate(self, params: ImageGenerationParams) -> ImageGenerationResponse:
         data = await self._http.post("/v1/images/generations", params.model_dump(exclude_none=True))
+        return ImageGenerationResponse.model_validate(data)
+
+    async def edit(self, params: ImageEditParams) -> ImageGenerationResponse:
+        data = await self._http.post("/v1/images/edits", params.model_dump(exclude_none=True))
         return ImageGenerationResponse.model_validate(data)
 
     async def stream(self, params: ImageGenerationParams) -> AsyncIterator[ImageGenerationChunk]:

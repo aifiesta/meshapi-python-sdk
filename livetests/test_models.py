@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from meshapi import MeshAPI
+from meshapi import MeshAPI, ModelSearchParams
 
 
 def test_models_list(client: MeshAPI) -> None:
@@ -36,3 +36,30 @@ def test_models_list_filter_free(client: MeshAPI) -> None:
 def test_models_list_filter_paid(client: MeshAPI) -> None:
     filtered = client.models.list(free=False)
     assert all(not m.is_free for m in filtered), "list(free=False) returned free models"
+
+
+def test_models_search_paginated(client: MeshAPI) -> None:
+    page = client.models.search(ModelSearchParams(limit=5))
+    assert page.total >= 0, "expected a non-negative total"
+    assert page.limit == 5, "page should echo the requested limit"
+    assert len(page.items) <= 5, "page must not exceed the limit"
+    assert isinstance(page.brands, list), "expected a brands facet list"
+    for m in page.items:
+        assert m.id and m.name
+
+
+def test_models_search_query_filter(client: MeshAPI) -> None:
+    page = client.models.search(ModelSearchParams(q="gpt", limit=10))
+    # Fuzzy match over id/name/brand — every returned model should relate to the query.
+    for m in page.items:
+        haystack = f"{m.id} {m.name}".lower()
+        assert "gpt" in haystack, f"unexpected model {m.id!r} for q='gpt'"
+
+
+def test_models_get_by_id(client: MeshAPI) -> None:
+    listed = client.models.list()
+    assert listed, "need at least one model to fetch by id"
+    target = listed[0].id
+    model = client.models.get(target)
+    assert model.id == target, f"get({target!r}) returned {model.id!r}"
+    assert model.name
