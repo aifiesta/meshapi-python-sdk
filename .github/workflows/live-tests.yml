@@ -24,11 +24,10 @@ env:
   MESHAPI_IMAGE_GEN_MODEL: "openai/gpt-image-1"
   MESHAPI_IMAGE_EDIT_MODEL: "openai/gpt-image-1"
   MESHAPI_AUDIO_OUT_MODEL: "openai/gpt-audio-mini"
-  MESHAPI_AUDIO_MODEL: "openai/gpt-audio-mini"
-  MESHAPI_INPUT_AUDIO_FORMAT: "wav"
-  # Small self-contained 8 kHz mono WAV tone (0.08 s), reused as the audio input
-  # sample so the audio tests run without sourcing an external clip.
-  MESHAPI_INPUT_AUDIO_B64: "UklGRiQFAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAFAAAAAAENeRgNIbcl7SWmIWQZIg40ASP0eOiV34fa6NnK3bflwPCX/bYKkRbCHzElOia+IiYbWRCdA3T2a+rw4CHbrtnD3APkku4w+2AIkxRXHoQkYSazI80cfxIBBs/4dexq4uDbmtng22ridezP+AEGfxLNHLMjYSaEJFcekxRgCDD7ku4D5MPcrtkh2/Dga+p09p0DWRAmG74iOiYxJcIfkRa2Cpf9wPC35crd6NmH2pXfeOgj9DQBIg5kGaYh7SW3JQ0heRgBDQAA//KH5/PeSdoT2lrenObe8cz+3QuIF2sgeSUYJjYiSRpAD2kCSvVv6T7gz9rG2ULd2uSn72P8jAmVFRAf3yRSJj0j/RtuEdAEoPdt66nhfNuf2U3cM+OB7f/5MQeLE5YdICRmJiAklh2LEzEH//mB7TPjTdyf2XzbqeFt66D30ARuEf0bPSNSJt8kEB+VFYwJY/yn79rkQt3G2c/aPuBv6Ur1aQJAD0kaNiIYJnklayCIF90LzP7e8ZzmWt4T2kna896H5//yAAABDXkYDSG3Je0lpiFkGSIONAEj9Hjold+H2ujZyt235cDwl/22CpEWwh8xJTomviImG1kQnQN09mvq8OAh267Zw9wD5JLuMPtgCJMUVx6EJGEmsyPNHH8SAQbP+HXsauLg25rZ4Ntq4nXsz/gBBn8SzRyzI2EmhCRXHpMUYAgw+5LuA+TD3K7ZIdvw4GvqdPadA1kQJhu+IjomMSXCH5EWtgqX/cDwt+XK3ejZh9qV33joI/Q0ASIOZBmmIe0ltyUNIXkYAQ0AAP/yh+fz3knaE9pa3pzm3vHM/t0LiBdrIHklGCY2IkkaQA9pAkr1b+k+4M/axtlC3drkp+9j/IwJlRUQH98kUiY9I/0bbhHQBKD3beup4Xzbn9lN3DPjge3/+TEHixOWHSAkZiYgJJYdixMxB//5ge0z403cn9l826nhbeug99AEbhH9Gz0jUibfJBAflRWMCWP8p+/a5ELdxtnP2j7gb+lK9WkCQA9JGjYiGCZ5JWsgiBfdC8z+3vGc5lreE9pJ2vPeh+f/8gAAAQ15GA0htyXtJaYhZBkiDjQBI/R46JXfh9ro2crdt+XA8Jf9tgqRFsIfMSU6Jr4iJhtZEJ0DdPZr6vDgIduu2cPcA+SS7jD7YAiTFFcehCRhJrMjzRx/EgEGz/h17Gri4Nua2eDbauJ17M/4AQZ/Es0csyNhJoQkVx6TFGAIMPuS7gPkw9yu2SHb8OBr6nT2nQNZECYbviI6JjElwh+RFrYKl/3A8Lflyt3o2Yfald946CP0NAEiDmQZpiHtJbclDSF5GAENAAD/8ofn895J2hPaWt6c5t7xzP7dC4gXayB5JRgmNiJJGkAPaQJK9W/pPuDP2sbZQt3a5KfvY/yMCZUVEB/fJFImPSP9G24R0ASg923rqeF825/ZTdwz44Ht//kxB4sTlh0gJGYmICSWHYsTMQf/+YHtM+NN3J/ZfNup4W3roPfQBG4R/Rs9I1Im3yQQH5UVjAlj/Kfv2uRC3cbZz9o+4G/pSvVpAkAPSRo2IhgmeSVrIIgX3QvM/t7xnOZa3hPaSdrz3ofn//IAAAENeRgNIbcl7SWmIWQZIg40ASP0eOiV34fa6NnK3bflwPCX/bYKkRbCHzElOia+IiYbWRCdA3T2a+rw4CHbrtnD3APkku4w+2AIkxRXHg=="
+  # Audio *input* (multimodal chat) needs a real recorded clip — a synthetic
+  # tone is rejected as invalid audio. Audio round-trip is already covered by
+  # the TTS→STT chained test, so MESHAPI_INPUT_AUDIO_B64 is left unset (that one
+  # multimodal-audio-input case skips). Set it to a real base64 wav to enable.
 
 jobs:
   live-test:
