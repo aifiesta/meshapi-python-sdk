@@ -1,0 +1,15 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [0.1, 0.2, 0.3]
+    }
+  ],
+  "model": "text-embedding-ada-002",
+  "usage": {
+    "byok_used": true,
+    "fallback_triggered": false
+  }
+}

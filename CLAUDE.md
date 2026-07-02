@@ -20,13 +20,12 @@ python/
 │       ├── chat.py        # /v1/chat/completions
 │       ├── responses.py   # /v1/responses
 │       ├── embeddings.py  # /v1/embeddings
-│       ├── compare.py     # /v1/compare
-│       ├── files.py       # /v1/files (batch file objects)
-│       ├── rag.py         # /v1/files RAG endpoints (upload, embed, search)
+│       ├── compare.py     # /v1/chat/compare
+│       ├── rag.py         # /v1/files RAG endpoints (upload, list, get status, embed, search)
 │       ├── batches.py     # /v1/batches
 │       ├── models.py      # /v1/models
 │       ├── templates.py   # /v1/templates
-│       └── images.py      # /v1/images/generations
+│       └── images.py      # /v1/images/generations, /v1/images/edits
 ├── tests/
 │   ├── unit/              # Fast, no-network tests
 │   ├── contract/          # Pydantic model parsing against local fixtures
@@ -160,9 +159,10 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_feature_matrix.py` | Cross-model feature matrix |
 | `test_rag.py` | RAG upload → embed → list → search |
 | `test_realtime.py` | WebSocket connect/close, session lifecycle |
-| `test_audio.py` | TTS synthesize, voice listing |
+| `test_audio.py` | TTS synthesize, voice listing, audio_translate |
 | `test_video.py` | Video list, generate → retrieve |
 | `test_compare.py` | Non-streaming compare, streaming compare |
+| `test_moderations.py` | Moderation classify: text and multimodal input |
 
 ---
 

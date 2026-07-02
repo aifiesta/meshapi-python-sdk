@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 from urllib.parse import quote
 
-import httpx
-
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import (
     BulkEmbedRequest,
@@ -63,7 +61,15 @@ class RagResource:
         upload = self.init_upload(
             InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
         )
-        resp = httpx.put(upload.signed_url, content=content, headers={"Content-Type": mime_type}, timeout=self._http._config.timeout)
+        # Use the configured httpx client so proxy/transport/TLS settings are honoured.
+        # Signed URLs are absolute — httpx accepts them even when base_url is set.
+        # Do NOT send Authorization header (the signed URL is pre-authenticated).
+        resp = self._http._client.put(
+            upload.signed_url,
+            content=content,
+            headers={"Content-Type": mime_type},
+            timeout=self._http._config.timeout,
+        )
         resp.raise_for_status()
         return upload
 
@@ -111,7 +117,14 @@ class AsyncRagResource:
         upload = await self.init_upload(
             InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
         )
-        async with httpx.AsyncClient() as client:
-            resp = await client.put(upload.signed_url, content=content, headers={"Content-Type": mime_type}, timeout=self._http._config.timeout)
+        # Use the configured async httpx client so proxy/transport/TLS settings are honoured.
+        # Signed URLs are absolute — httpx accepts them even when base_url is set.
+        # Do NOT send Authorization header (the signed URL is pre-authenticated).
+        resp = await self._http._client.put(
+            upload.signed_url,
+            content=content,
+            headers={"Content-Type": mime_type},
+            timeout=self._http._config.timeout,
+        )
         resp.raise_for_status()
         return upload

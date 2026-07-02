@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import (
+    AudioTranslationsParams,
     ListVoicesParams,
     SpeechParams,
     TranscriptionParams,
@@ -58,6 +59,27 @@ class AudioResource:
             fields = params.model_dump(exclude_none=True)
         data = self._http.post_multipart(
             "/v1/audio/transcriptions/translate",
+            fields,
+            file_data=(filename, file, "application/octet-stream"),
+            file_field="file",
+        )
+        return TranscriptionResponse.model_validate(data)
+
+    def audio_translate(
+        self,
+        file: bytes,
+        params: AudioTranslationsParams,
+        *,
+        filename: str = "audio.mp3",
+    ) -> TranscriptionResponse:
+        """POST /v1/audio/translations — standalone translation endpoint.
+
+        Translates the uploaded audio to English.  This is a distinct endpoint
+        from ``translate()`` which posts to ``/v1/audio/transcriptions/translate``.
+        """
+        fields = params.model_dump(exclude_none=True)
+        data = self._http.post_multipart(
+            "/v1/audio/translations",
             fields,
             file_data=(filename, file, "application/octet-stream"),
             file_field="file",
@@ -120,6 +142,27 @@ class AsyncAudioResource:
             fields = params.model_dump(exclude_none=True)
         data = await self._http.post_multipart(
             "/v1/audio/transcriptions/translate",
+            fields,
+            file_data=(filename, file, "application/octet-stream"),
+            file_field="file",
+        )
+        return TranscriptionResponse.model_validate(data)
+
+    async def audio_translate(
+        self,
+        file: bytes,
+        params: AudioTranslationsParams,
+        *,
+        filename: str = "audio.mp3",
+    ) -> TranscriptionResponse:
+        """POST /v1/audio/translations — standalone translation endpoint.
+
+        Translates the uploaded audio to English.  This is a distinct endpoint
+        from ``translate()`` which posts to ``/v1/audio/transcriptions/translate``.
+        """
+        fields = params.model_dump(exclude_none=True)
+        data = await self._http.post_multipart(
+            "/v1/audio/translations",
             fields,
             file_data=(filename, file, "application/octet-stream"),
             file_field="file",

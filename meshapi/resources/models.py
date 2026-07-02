@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from urllib.parse import quote
 
 from .._http import AsyncHttpClient, SyncHttpClient
@@ -13,10 +13,20 @@ class ModelsResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def list(self, *, free: Optional[bool] = None) -> List[ModelInfo]:
+    def list(
+        self,
+        *,
+        free: Optional[bool] = None,
+        type: Optional[Literal["text", "embedding", "image", "audio", "video"]] = None,
+        provider: Optional[str] = None,
+    ) -> List[ModelInfo]:
         params = {}
         if free is not None:
             params["free"] = str(free).lower()
+        if type is not None:
+            params["type"] = type
+        if provider is not None:
+            params["provider"] = provider
         data = self._http.get("/v1/models", params=params or None)
         return [ModelInfo.model_validate(m) for m in (data or [])]
 
@@ -45,10 +55,20 @@ class AsyncModelsResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def list(self, *, free: Optional[bool] = None) -> List[ModelInfo]:
+    async def list(
+        self,
+        *,
+        free: Optional[bool] = None,
+        type: Optional[Literal["text", "embedding", "image", "audio", "video"]] = None,
+        provider: Optional[str] = None,
+    ) -> List[ModelInfo]:
         params = {}
         if free is not None:
             params["free"] = str(free).lower()
+        if type is not None:
+            params["type"] = type
+        if provider is not None:
+            params["provider"] = provider
         data = await self._http.get("/v1/models", params=params or None)
         return [ModelInfo.model_validate(m) for m in (data or [])]
 

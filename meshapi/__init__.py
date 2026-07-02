@@ -9,6 +9,7 @@ from ._http import AsyncHttpClient, MeshAPIConfig, SyncHttpClient
 from ._types import (
     ApiErrorBody,
     ApiErrorEnvelope,
+    AudioTranslationsParams,
     BulkEmbedRequest,
     ListVoicesParams,
     PronunciationDictionaryLocator,
@@ -22,6 +23,10 @@ from ._types import (
     BulkEmbedResponse,
     BulkEmbedResult,
     ChatCompletionChunk,
+    DocumentListResponse,
+    DocumentResponse,
+    GenerateDocumentRequest,
+    ListDocumentsParams,
     ChatCompletionChunkChoice,
     ChatCompletionChunkDelta,
     ChatCompletionChoice,
@@ -37,17 +42,23 @@ from ._types import (
     ContentPartAudio,
     ContentPartImage,
     ContentPartText,
+    ContentPartVideo,
+    VideoUrl,
     CreateBatchParams,
     CreateTemplateParams,
     EmbeddingItem,
     EmbeddingsParams,
     EmbeddingsResponse,
     EmbeddingsUsage,
+    ImageEmbeddingUrl,
+    VideoEmbeddingUrl,
+    MultimodalEmbeddingInput,
     InitUploadRequest,
     InitUploadResponse,
     ImageDetail,
     ImageEditParams,
     ImageRef,
+    ImageGenerationChunk,
     ImageGenerationParams,
     ImageGenerationResponse,
     ImageItem,
@@ -111,6 +122,7 @@ from ._types import (
     UsageInfo,
 )
 from .resources.audio import AsyncAudioResource, AudioResource
+from .resources.documents import AsyncDocumentsResource, DocumentsResource
 from .resources.videos import AsyncVideosResource, VideosResource
 from .resources.batches import AsyncBatchesResource, BatchesResource
 from .resources.chat import AsyncChatResource, ChatResource
@@ -133,7 +145,7 @@ from .resources.realtime import (
 from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
-__version__ = "0.1.0"
+__version__ = "0.1.7"
 __all__ = [
     "__version__",
     "MeshAPI",
@@ -147,11 +159,14 @@ __all__ = [
     "ContentPartAudio",
     "ContentPartText",
     "ContentPartImage",
+    "ContentPartVideo",
+    "VideoUrl",
     "ImageDetail",
     "InputAudio",
     "ImageOptions",
     "ImageEditParams",
     "ImageRef",
+    "ImageGenerationChunk",
     "ImageGenerationParams",
     "ImageGenerationResponse",
     "ImageItem",
@@ -179,6 +194,9 @@ __all__ = [
     "EmbeddingItem",
     "EmbeddingsUsage",
     "EmbeddingsResponse",
+    "ImageEmbeddingUrl",
+    "VideoEmbeddingUrl",
+    "MultimodalEmbeddingInput",
     "ResponsesFunctionTool",
     "BuiltinTool",
     "ResponsesParams",
@@ -264,10 +282,18 @@ __all__ = [
     "PronunciationDictionaryLocator",
     "TranscriptionParams",
     "TranscriptionTranslateParams",
+    "AudioTranslationsParams",
     "TranscriptionResponse",
     "ListVoicesParams",
     "Voice",
     "VoicesResponse",
+    # Documents
+    "DocumentsResource",
+    "AsyncDocumentsResource",
+    "GenerateDocumentRequest",
+    "ListDocumentsParams",
+    "DocumentResponse",
+    "DocumentListResponse",
 ]
 
 
@@ -317,6 +343,7 @@ class MeshAPI:
         self.templates = TemplatesResource(http)
         self.images = ImagesResource(http)
         self.videos = VideosResource(http)
+        self.documents = DocumentsResource(http)
         self.audio = AudioResource(http)
         self.rag = RagResource(http)
         self.moderations = ModerationsResource(http)
@@ -380,6 +407,7 @@ class AsyncMeshAPI:
         self.templates = AsyncTemplatesResource(http)
         self.images = AsyncImagesResource(http)
         self.videos = AsyncVideosResource(http)
+        self.documents = AsyncDocumentsResource(http)
         self.audio = AsyncAudioResource(http)
         self.rag = AsyncRagResource(http)
         self.moderations = AsyncModerationsResource(http)
