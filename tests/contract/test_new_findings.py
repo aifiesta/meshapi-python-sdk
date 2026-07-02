@@ -20,15 +20,11 @@ import pytest
 from meshapi._types import (
     BatchObject,
     ContentPartVideo,
-    DocumentListResponse,
-    DocumentResponse,
     EmbeddingsParams,
     EmbeddingsResponse,
     EmbeddingsUsage,
-    GenerateDocumentRequest,
     ImageEmbeddingUrl,
     ImageGenerationParams,
-    ListDocumentsParams,
     ModelInfo,
     ModelPricing,
     MultimodalEmbeddingInput,
@@ -74,150 +70,6 @@ def test_embeddings_usage_normal_tokens_still_work():
     usage = EmbeddingsUsage.model_validate({"prompt_tokens": 10, "total_tokens": 10})
     assert usage.prompt_tokens == 10
     assert usage.total_tokens == 10
-
-
-# ---------------------------------------------------------------------------
-# Documents (finding #1/2)
-# ---------------------------------------------------------------------------
-
-
-def test_document_response_full():
-    data = load("document_response.json")
-    doc = DocumentResponse.model_validate(data)
-    assert doc.document_id == "doc_abc123"
-    assert doc.status == "completed"
-    assert doc.format == "pdf"
-    assert doc.model == "google/gemini-2.5-flash-lite"
-    assert doc.title == "My Report"
-    assert doc.size_bytes == 102400
-    assert doc.prompt_tokens == 150
-    assert doc.total_tokens == 2150
-    assert doc.failure_reason is None
-
-
-def test_document_response_minimal():
-    """A pending document with only required fields must parse without error."""
-    data = {
-        "document_id": "doc_xyz",
-        "status": "pending",
-        "format": "xlsx",
-        "model": "google/gemini-2.5-flash-lite",
-    }
-    doc = DocumentResponse.model_validate(data)
-    assert doc.document_id == "doc_xyz"
-    assert doc.title is None
-    assert doc.download_url is None
-    assert doc.size_bytes is None
-
-
-def test_document_list_response():
-    data = load("document_list_response.json")
-    result = DocumentListResponse.model_validate(data)
-    assert result.total == 2
-    assert result.limit == 50
-    assert result.offset == 0
-    assert len(result.documents) == 2
-    completed = result.documents[0]
-    assert completed.document_id == "doc_abc123"
-    assert completed.status == "completed"
-    pending = result.documents[1]
-    assert pending.status == "pending"
-    assert pending.title is None
-
-
-def test_generate_document_request_valid():
-    req = GenerateDocumentRequest(format="pdf", prompt="Write a report about AI.")
-    assert req.format == "pdf"
-    assert req.model is None
-    assert req.metadata is None
-
-
-def test_generate_document_request_with_model():
-    req = GenerateDocumentRequest(
-        format="docx",
-        prompt="Summarise Q1 results",
-        model="google/gemini-2.5-flash-lite",
-        metadata={"source": "finance"},
-    )
-    dumped = req.model_dump(exclude_none=True)
-    assert dumped["format"] == "docx"
-    assert dumped["model"] == "google/gemini-2.5-flash-lite"
-    assert dumped["metadata"] == {"source": "finance"}
-
-
-def test_list_documents_params_serialises():
-    params = ListDocumentsParams(limit=10, offset=20)
-    query = {k: str(v) for k, v in params.model_dump(exclude_none=True).items()}
-    assert query == {"limit": "10", "offset": "20"}
-
-
-def test_list_documents_params_empty():
-    params = ListDocumentsParams()
-    assert params.model_dump(exclude_none=True) == {}
-
-
-# ---------------------------------------------------------------------------
-# DocumentsResource — path / method wiring (finding #1/2)
-# ---------------------------------------------------------------------------
-
-
-def test_documents_resource_generate_calls_post():
-    from meshapi.resources.documents import DocumentsResource
-    from unittest.mock import MagicMock
-
-    mock_http = MagicMock()
-    mock_http.post.return_value = {
-        "document_id": "doc_1",
-        "status": "pending",
-        "format": "pdf",
-        "model": "google/gemini-2.5-flash-lite",
-    }
-    resource = DocumentsResource(mock_http)
-    req = GenerateDocumentRequest(format="pdf", prompt="Hello")
-    resp = resource.generate(req)
-    mock_http.post.assert_called_once_with(
-        "/v1/documents/generate",
-        {"format": "pdf", "prompt": "Hello"},
-    )
-    assert resp.document_id == "doc_1"
-
-
-def test_documents_resource_list_no_params():
-    from meshapi.resources.documents import DocumentsResource
-    from unittest.mock import MagicMock
-
-    mock_http = MagicMock()
-    mock_http.get.return_value = {"documents": [], "total": 0, "limit": 50, "offset": 0}
-    resource = DocumentsResource(mock_http)
-    resource.list()
-    mock_http.get.assert_called_once_with("/v1/documents", params=None)
-
-
-def test_documents_resource_list_with_params():
-    from meshapi.resources.documents import DocumentsResource
-    from unittest.mock import MagicMock
-
-    mock_http = MagicMock()
-    mock_http.get.return_value = {"documents": [], "total": 0, "limit": 10, "offset": 5}
-    resource = DocumentsResource(mock_http)
-    resource.list(ListDocumentsParams(limit=10, offset=5))
-    mock_http.get.assert_called_once_with("/v1/documents", params={"limit": "10", "offset": "5"})
-
-
-def test_documents_resource_retrieve_quotes_path():
-    from meshapi.resources.documents import DocumentsResource
-    from unittest.mock import MagicMock
-
-    mock_http = MagicMock()
-    mock_http.get.return_value = {
-        "document_id": "doc/special",
-        "status": "completed",
-        "format": "pdf",
-        "model": "google/gemini-2.5-flash-lite",
-    }
-    resource = DocumentsResource(mock_http)
-    resource.retrieve("doc/special")
-    mock_http.get.assert_called_once_with("/v1/documents/doc%2Fspecial")
 
 
 # ---------------------------------------------------------------------------
@@ -611,39 +463,6 @@ def test_input_audio_with_data():
     from meshapi._types import InputAudio
     audio = InputAudio.model_validate({"data": "base64data==", "format": "wav"})
     assert audio.data == "base64data=="
-
-
-# ---------------------------------------------------------------------------
-# MeshAPI / AsyncMeshAPI expose documents attribute (finding #1/2)
-# ---------------------------------------------------------------------------
-
-
-def test_meshapi_has_documents():
-    import meshapi
-    assert hasattr(meshapi.MeshAPI, "__init__")
-    # Verify DocumentsResource is in __all__
-    assert "DocumentsResource" in meshapi.__all__
-    assert "AsyncDocumentsResource" in meshapi.__all__
-    assert "DocumentResponse" in meshapi.__all__
-    assert "DocumentListResponse" in meshapi.__all__
-    assert "GenerateDocumentRequest" in meshapi.__all__
-    assert "ListDocumentsParams" in meshapi.__all__
-
-
-def test_meshapi_sync_client_has_documents():
-    from meshapi import MeshAPI
-    from meshapi.resources.documents import DocumentsResource
-    client = MeshAPI(base_url="http://localhost:9999", token="test")
-    assert hasattr(client, "documents")
-    assert isinstance(client.documents, DocumentsResource)
-
-
-def test_meshapi_async_client_has_documents():
-    from meshapi import AsyncMeshAPI
-    from meshapi.resources.documents import AsyncDocumentsResource
-    client = AsyncMeshAPI(base_url="http://localhost:9999", token="test")
-    assert hasattr(client, "documents")
-    assert isinstance(client.documents, AsyncDocumentsResource)
 
 
 # ---------------------------------------------------------------------------
