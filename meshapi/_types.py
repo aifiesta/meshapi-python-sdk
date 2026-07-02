@@ -939,17 +939,21 @@ class Voice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     voice_id: str
     name: str
-    category: str
-    description: str
-    preview_url: str
-    labels: Dict[str, str] = {}
+    # Optional: minimal voice objects (id + name only) must not fail validation.
+    category: Optional[str] = None
+    description: Optional[str] = None
+    preview_url: Optional[str] = None
+    # Label values are provider-defined and not always strings.
+    labels: Dict[str, Any] = Field(default_factory=dict)
 
 
 class VoicesResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     voices: List[Voice]
-    has_more: bool
-    total_count: int
+    # Optional so a response that omits has_more / total_count is not rejected,
+    # and an absent pagination flag is distinguishable from a real False.
+    has_more: Optional[bool] = None
+    total_count: Optional[int] = None
     next_page_token: Optional[str] = None
 
 

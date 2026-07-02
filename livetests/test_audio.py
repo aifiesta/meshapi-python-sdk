@@ -20,7 +20,9 @@ def test_audio_synthesize(client: MeshAPI) -> None:
 
 def test_audio_stt_from_tts(client: MeshAPI) -> None:
     audio_bytes = client.audio.synthesize(
-        SpeechParams(input="Hello from MeshAPI audio test.", model=TTS_MODEL)
+        # Request wav so the bytes match the "tts_output.wav" filename the STT
+        # step uploads — otherwise transcription can receive mislabeled audio.
+        SpeechParams(input="Hello from MeshAPI audio test.", model=TTS_MODEL, response_format="wav")
     )
     assert isinstance(audio_bytes, bytes) and len(audio_bytes) > 0, "TTS step failed"
 
