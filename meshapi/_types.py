@@ -33,7 +33,9 @@ class ContentPartImage(BaseModel):
 
 class InputAudio(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    data: str
+    data: Optional[str] = None
+    uri: Optional[str] = None
+    url: Optional[str] = None
     format: Literal["wav", "mp3", "aiff", "aac", "ogg", "flac", "m4a", "pcm16", "pcm24"]
 
 
@@ -43,7 +45,19 @@ class ContentPartAudio(BaseModel):
     input_audio: InputAudio
 
 
-ContentPart = Union[ContentPartText, ContentPartImage, ContentPartAudio]
+class VideoUrl(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    url: str
+
+
+class ContentPartVideo(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    type: Literal["video_url"]
+    video_url: VideoUrl
+    fps: Optional[str] = None
+
+
+ContentPart = Union[ContentPartText, ContentPartImage, ContentPartAudio, ContentPartVideo]
 
 
 class ToolCallFunction(BaseModel):
@@ -57,6 +71,7 @@ class ToolCall(BaseModel):
     id: str
     type: Literal["function"]
     function: ToolCallFunction
+    thought_signature: Optional[str] = None
 
 
 class ToolCallFunctionChunk(BaseModel):
@@ -80,6 +95,7 @@ class ChatMessage(BaseModel):
     name: Optional[str] = None
     tool_call_id: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
+    reasoning_details: Optional[List[Dict[str, Any]]] = None
 
 
 class ToolFunction(BaseModel):
@@ -167,6 +183,11 @@ class ChatCompletionParams(BaseModel):
     # timeout and does not affect this value.
     timeout: Optional[float] = Field(default=None, gt=0)
 
+    # Spec fields: cache, transforms, reasoning_effort
+    cache: Optional[bool] = None
+    transforms: Optional[List[str]] = None
+    reasoning_effort: Optional[Literal["high", "medium", "low", "none"]] = None
+
 
 class UsageInfo(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -240,12 +261,42 @@ class ChatCompletionChunk(BaseModel):
 
 class ModelPricing(BaseModel):
     model_config = ConfigDict(extra="ignore")
+    # Required by spec (nullable)
     prompt_usd_per_1k: Optional[str] = None
     completion_usd_per_1k: Optional[str] = None
-    image_usd_per_image: Optional[str] = None
+    # Optional spec fields (all str|null, values are strings per spec)
+    pricing_unit: Optional[str] = None
+    prompt_usd_per_1m: Optional[str] = None
+    completion_usd_per_1m: Optional[str] = None
+    image_output_usd_per_image: Optional[str] = None
+    request_usd: Optional[str] = None
+    long_context_input_usd_per_1m: Optional[str] = None
+    long_context_output_usd_per_1m: Optional[str] = None
+    cache_read_input_usd_per_1m: Optional[str] = None
+    cache_write_input_usd_per_1m: Optional[str] = None
+    cache_read_audio_input_usd_per_1m: Optional[str] = None
+    long_context_cache_read_input_usd_per_1m: Optional[str] = None
+    long_context_cache_write_input_usd_per_1m: Optional[str] = None
+    batch_input_usd_per_1m: Optional[str] = None
+    batch_output_usd_per_1m: Optional[str] = None
+    training_usd_per_1m: Optional[str] = None
+    fine_tuned_input_usd_per_1m: Optional[str] = None
+    fine_tuned_output_usd_per_1m: Optional[str] = None
+    audio_input_usd_per_1m: Optional[str] = None
+    audio_output_usd_per_1m: Optional[str] = None
+    transcription_usd_per_1m: Optional[str] = None
+    cached_audio_input_usd_per_1m: Optional[str] = None
+    cached_text_input_usd_per_1m: Optional[str] = None
+    cache_hit_usd_per_1m: Optional[str] = None
+    output_with_audio_usd_per_1m: Optional[str] = None
+    output_with_video_usd_per_1m: Optional[str] = None
+    image_input_usd_per_image: Optional[str] = None
+    image_output_size: Optional[str] = None
+    effective_date: Optional[str] = None
+    deprecated_date: Optional[str] = None
+    notes: Optional[str] = None
+    source_url: Optional[str] = None
     discount_pct: Optional[str] = None
-    prompt_usd_per_1k_discounted: Optional[str] = None
-    completion_usd_per_1k_discounted: Optional[str] = None
 
 
 class ModelInfo(BaseModel):
@@ -262,11 +313,38 @@ class ModelInfo(BaseModel):
     model_type: Optional[str] = None
     input_modalities: Optional[List[str]] = None
     output_modalities: Optional[List[str]] = None
+    # Additional spec fields
+    brand: Optional[str] = None
+    provider: Optional[str] = None
+    supports_realtime: Optional[bool] = None
+    supports_embeddings: Optional[bool] = None
+    supports_tools: Optional[bool] = None
+    supports_structured_output: Optional[bool] = None
+    supports_system_prompt: Optional[bool] = None
+    supports_batching: Optional[bool] = None
+    supports_background_response: Optional[bool] = None
+    supports_video_generation: Optional[bool] = None
+    supports_image_edit: Optional[bool] = None
+    supports_image_inpaint: Optional[bool] = None
+    supports_image_outpaint: Optional[bool] = None
+    supports_image_mix: Optional[bool] = None
+    supports_image_reframe: Optional[bool] = None
+    supports_image_upscale: Optional[bool] = None
+    supports_image_remove_background: Optional[bool] = None
+    supports_image_reference: Optional[bool] = None
+    context_window: Optional[int] = None
+    standard_context_threshold: Optional[int] = None
+    realtime_session_max_tokens: Optional[int] = None
+    realtime_max_concurrent_per_owner: Optional[int] = None
+    is_composite: bool = False
+    composite_models: Optional[List[str]] = None
 
 
 class ListModelsParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
     free: Optional[bool] = None
+    type: Optional[Literal["text", "embedding", "image", "audio", "video"]] = None
+    provider: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +367,7 @@ class CreateTemplateParams(BaseModel):
     model: Optional[str] = None
     params: Optional[Dict[str, Any]] = None
     variables: Optional[List[str]] = None
+    team_id: Optional[str] = None
 
 
 class UpdateTemplateParams(BaseModel):
@@ -331,15 +410,36 @@ class ProviderPreferences(BaseModel):
     data_collection: Optional[Literal["allow", "deny"]] = None
 
 
+# Multimodal embedding input types
+class ImageEmbeddingUrl(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    url: str
+
+
+class VideoEmbeddingUrl(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    url: str
+
+
+class MultimodalEmbeddingInput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    type: Literal["text", "image_url", "video_url"]
+    text: Optional[str] = None
+    image_url: Optional[ImageEmbeddingUrl] = None
+    video_url: Optional[VideoEmbeddingUrl] = None
+
+
 class EmbeddingsParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
     model: Optional[str] = None
-    input: Union[str, List[str], List[int], List[List[int]]]
+    input: Union[str, List[str], List[int], List[List[int]], List[MultimodalEmbeddingInput]]
     dimensions: Optional[int] = Field(default=None, ge=1)
     encoding_format: Optional[Literal["float", "base64"]] = None
     input_type: Optional[str] = None
     provider: Optional[Union[str, ProviderPreferences]] = None
     user: Optional[str] = Field(default=None, max_length=256)
+    instructions: Optional[str] = None
+    sparse_embedding: Optional[Dict[str, Any]] = None
 
 
 class EmbeddingItem(BaseModel):
@@ -351,8 +451,10 @@ class EmbeddingItem(BaseModel):
 
 class EmbeddingsUsage(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    prompt_tokens: int
-    total_tokens: int
+    prompt_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    byok_used: Optional[bool] = None
+    fallback_triggered: Optional[bool] = None
 
 
 class EmbeddingsResponse(BaseModel):
@@ -407,6 +509,17 @@ class ResponsesParams(BaseModel):
     response_format: Optional[Dict[str, Any]] = None
     user: Optional[str] = Field(default=None, max_length=256)
     timeout: Optional[float] = Field(default=None, gt=0)
+    # Additional spec fields (second-pass findings)
+    previous_response_id: Optional[str] = None
+    instructions: Optional[str] = None
+    thinking: Optional[Dict[str, Any]] = None
+    caching: Optional[Dict[str, Any]] = None
+    store: Optional[bool] = None
+    include: Optional[List[Any]] = None
+    expire_at: Optional[int] = None
+    max_tool_calls: Optional[int] = Field(default=None, ge=1, le=10)
+    context_management: Optional[Dict[str, Any]] = None
+    plugins: Optional[List[Any]] = None
 
 
 class ResponsesUsage(BaseModel):
@@ -556,6 +669,11 @@ class BatchObject(BaseModel):
     created_at: Optional[int] = None
     completed_at: Optional[int] = None
     usage_synced: Optional[bool] = None
+    results: Optional[List[Dict[str, Any]]] = None
+    errors_detail: Optional[List[Dict[str, Any]]] = None
+    error_file_id: Optional[str] = None
+    request_counts: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class BatchListResponse(BaseModel):
@@ -585,6 +703,20 @@ class ImageGenerationParams(BaseModel):
     response_format: Optional[Literal["url", "b64_json"]] = None
     output_format: Optional[Literal["png", "jpeg", "webp"]] = None
     stream: Optional[bool] = None
+    # Additional spec fields (previously missing — silently dropped due to extra="ignore")
+    aspect_ratio: Optional[str] = None
+    resolution: Optional[str] = None
+    output_compression: Optional[int] = Field(default=None, ge=0, le=100)
+    background: Optional[Literal["transparent", "opaque", "auto"]] = None
+    moderation: Optional[Literal["low", "auto"]] = None
+    partial_images: Optional[int] = Field(default=None, ge=0, le=3)
+    image: Optional[Union[str, List[str]]] = None
+    seed: Optional[int] = Field(default=None, ge=-1, le=2147483647)
+    sequential_image_generation: Optional[Literal["auto", "disabled"]] = None
+    sequential_image_generation_options: Optional[Dict[str, Any]] = None
+    guidance_scale: Optional[float] = Field(default=None, ge=1, le=10)
+    watermark: Optional[bool] = None
+    optimize_prompt_options: Optional[Dict[str, Any]] = None
 
 
 class ImageItem(BaseModel):
@@ -917,6 +1049,20 @@ class TranscriptionTranslateParams(BaseModel):
     prompt: Optional[str] = None
 
 
+class AudioTranslationsParams(BaseModel):
+    """Params for POST /v1/audio/translations (standalone translation endpoint).
+
+    Distinct from TranscriptionTranslateParams which targets
+    POST /v1/audio/transcriptions/translate.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    prompt: Optional[str] = None
+    response_format: Optional[str] = None
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+
+
 class TranscriptionResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     text: str
@@ -1056,7 +1202,7 @@ class WebSearchResponse(BaseModel):
 class RouterSelectParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
     messages: List[ChatMessage] = Field(..., min_length=1)
-    api_type: Literal["completions"] = "completions"
+    api_type: Literal["completions", "responses", "embeddings"] = "completions"
     exclude_models: Optional[List[str]] = None
 
 
@@ -1171,3 +1317,57 @@ class ImageEditParams(BaseModel):
     resolution: Optional[str] = None
     expand_factor: Optional[Union[str, float]] = None
     mask_feather: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Documents — GET /v1/documents, POST /v1/documents/generate,
+#             GET /v1/documents/{document_id}
+# ---------------------------------------------------------------------------
+
+
+class GenerateDocumentRequest(BaseModel):
+    """Request body for POST /v1/documents/generate."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    format: Literal["pdf", "docx", "pptx", "csv", "xlsx"]
+    prompt: str
+    model: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class ListDocumentsParams(BaseModel):
+    """Query params for GET /v1/documents."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    limit: Optional[int] = Field(default=None, ge=1, le=200)
+    offset: Optional[int] = Field(default=None, ge=0)
+
+
+class DocumentResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    document_id: str
+    status: str
+    format: str
+    model: str
+    title: Optional[str] = None
+    download_url: Optional[str] = None
+    expires_at: Optional[str] = None
+    size_bytes: Optional[int] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    failure_reason: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class DocumentListResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    documents: List[DocumentResponse]
+    total: int
+    limit: int
+    offset: int

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import BatchListResponse, BatchObject, CreateBatchParams
 
@@ -24,11 +26,11 @@ class BatchesResource:
         return BatchListResponse.model_validate(data)
 
     def get(self, batch_id: str) -> BatchObject:
-        data = self._http.get(f"/v1/batches/{batch_id}")
+        data = self._http.get(f"/v1/batches/{quote(batch_id, safe='')}")
         return BatchObject.model_validate(data)
 
     def cancel(self, batch_id: str) -> BatchObject:
-        data = self._http.post(f"/v1/batches/{batch_id}/cancel", {})
+        data = self._http.post(f"/v1/batches/{quote(batch_id, safe='')}/cancel", {})
         return BatchObject.model_validate(data)
 
 
@@ -52,9 +54,9 @@ class AsyncBatchesResource:
         return BatchListResponse.model_validate(data)
 
     async def get(self, batch_id: str) -> BatchObject:
-        data = await self._http.get(f"/v1/batches/{batch_id}")
+        data = await self._http.get(f"/v1/batches/{quote(batch_id, safe='')}")
         return BatchObject.model_validate(data)
 
     async def cancel(self, batch_id: str) -> BatchObject:
-        data = await self._http.post(f"/v1/batches/{batch_id}/cancel", {})
+        data = await self._http.post(f"/v1/batches/{quote(batch_id, safe='')}/cancel", {})
         return BatchObject.model_validate(data)
