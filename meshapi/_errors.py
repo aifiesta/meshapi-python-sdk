@@ -8,6 +8,24 @@ if TYPE_CHECKING:
     import httpx
 
 
+# Fallback machine-readable codes by HTTP status, used when the response body
+# is not the standard {"error": {"code": ...}} envelope.
+_STATUS_ERROR_CODES: Dict[int, str] = {
+    400: "invalid_request",
+    401: "unauthorized",
+    402: "spend_limit_exceeded",
+    403: "forbidden",
+    404: "not_found",
+    409: "conflict",
+    422: "validation_error",
+    429: "rate_limit_exceeded",
+    500: "upstream_error",
+    502: "upstream_error",
+    503: "upstream_error",
+    504: "upstream_error",
+}
+
+
 class MeshAPIError(Exception):
     """Raised when MeshAPI returns a non-2xx response or a mid-stream error."""
 
@@ -63,12 +81,21 @@ class MeshAPIError(Exception):
 
         try:
             body = response.json()
-            error = body.get("error", {})
-            request_id = body.get("request_id", request_id)
+            error = body.get("error") if isinstance(body, dict) else None
+            if not isinstance(error, dict):
+                error = {}
+            if isinstance(body, dict):
+                request_id = body.get("request_id", request_id)
+            # Fall back to a status-derived code and a FastAPI-style "detail"
+            # message when the body isn't the standard {"error": {...}} envelope
+            # (e.g. GET /v1/models/{id} 404s return {"detail": "..."}).
+            code = error.get("code") or _STATUS_ERROR_CODES.get(status, "http_error")
+            detail = body.get("detail") if isinstance(body, dict) else None
+            message = error.get("message") or (detail if isinstance(detail, str) else None) or f"HTTP {status}"
             return cls(
-                error.get("message", f"HTTP {status}"),
+                message,
                 status=status,
-                error_code=error.get("code", "unknown_error"),
+                error_code=code,
                 request_id=request_id,
                 details=error.get("details") or [],
                 provider_error=error.get("provider_error"),

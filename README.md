@@ -586,7 +586,7 @@ from meshapi import (
 
 ```python
 import meshapi
-print(meshapi.__version__)  # "0.1.9"
+print(meshapi.__version__)  # "0.1.10"
 ```
 
 ## About Mesh API

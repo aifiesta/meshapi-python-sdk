@@ -3,14 +3,33 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, Iterator
+import ssl as _ssl
+from typing import Any, AsyncIterator, Iterator, Optional
 from urllib.parse import quote
 
 from .._errors import MeshAPIError
-from .._http import MeshAPIConfig
+from .._http import MeshAPIConfig, _SDK_VERSION_VALUE
 
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
-_SDK_VERSION_VALUE = "python/0.1.0"
+
+
+def _wss_ssl_context(ws_url: str) -> "Optional[_ssl.SSLContext]":
+    """Build an SSL context trusting certifi's CA bundle for ``wss://`` URLs.
+
+    The REST client (httpx) already verifies against certifi. Without this, the
+    realtime WebSocket falls back to the OS trust store and fails with
+    ``CERTIFICATE_VERIFY_FAILED`` on environments where system CAs aren't wired
+    into Python (python.org builds, slim containers) — even though REST works.
+    Returns ``None`` for plaintext ``ws://`` URLs.
+    """
+    if not ws_url.startswith("wss://"):
+        return None
+    try:
+        import certifi
+
+        return _ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return _ssl.create_default_context()
 
 
 class RealtimeError(MeshAPIError):
@@ -195,6 +214,7 @@ class _AsyncConnectionManager:
             ws_url,
             additional_headers=extra_headers,
             subprotocols=["openai-realtime"],
+            ssl=_wss_ssl_context(ws_url),
         )
         return AsyncRealtimeSession(ws)
 
@@ -321,5 +341,6 @@ class RealtimeResource:
             ws_url,
             additional_headers=extra_headers,
             subprotocols=["openai-realtime"],
+            ssl=_wss_ssl_context(ws_url),
         )
         return RealtimeSession(ws)

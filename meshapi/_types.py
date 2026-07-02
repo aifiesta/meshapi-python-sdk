@@ -147,10 +147,11 @@ class ImageOptions(BaseModel):
 class ChatCompletionParams(BaseModel):
     """Request body for POST /v1/chat/completions."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     messages: List[ChatMessage]
     model: Optional[str] = None
+    models: Optional[List[str]] = None
     stream: Optional[bool] = None
 
     # MeshAPI extensions
@@ -359,7 +360,7 @@ class TemplateMessage(BaseModel):
 
 
 class CreateTemplateParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     name: str
     description: Optional[str] = None
     system: Optional[str] = None
@@ -371,7 +372,7 @@ class CreateTemplateParams(BaseModel):
 
 
 class UpdateTemplateParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     name: Optional[str] = None
     description: Optional[str] = None
     system: Optional[str] = None
@@ -430,7 +431,7 @@ class MultimodalEmbeddingInput(BaseModel):
 
 
 class EmbeddingsParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: Optional[str] = None
     input: Union[str, List[str], List[int], List[List[int]], List[MultimodalEmbeddingInput]]
     dimensions: Optional[int] = Field(default=None, ge=1)
@@ -492,9 +493,11 @@ class ResponsesFunctionTool(BaseModel):
 
 
 class ResponsesParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: Optional[str] = None
     input: Union[str, List[Any]]
+    background: Optional[bool] = None
+    text: Optional[Dict[str, Any]] = None
     template: Optional[str] = None
     variables: Optional[Dict[str, str]] = None
     session_id: Optional[str] = None
@@ -565,7 +568,7 @@ class ModelOverride(BaseModel):
 
 
 class CompareParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     models: List[str]
     messages: List[ChatMessage]
     model_overrides: Optional[List[ModelOverride]] = None
@@ -574,6 +577,7 @@ class CompareParams(BaseModel):
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1)
     stream: bool = False
+    cache: Optional[bool] = None
     template: Optional[str] = None
     variables: Optional[Dict[str, str]] = None
     skip_comparison: bool = False
@@ -642,7 +646,7 @@ class CompareStreamEvent(BaseModel):
 
 
 class BatchRequestItem(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     custom_id: str
     method: str = "POST"
     url: str = "/v1/chat/completions"
@@ -650,7 +654,7 @@ class BatchRequestItem(BaseModel):
 
 
 class CreateBatchParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     requests: List[BatchRequestItem]
     completion_window: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
@@ -693,7 +697,7 @@ class BatchListResponse(BaseModel):
 class ImageGenerationParams(BaseModel):
     """Request body for POST /v1/images/generations."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     prompt: str
     model: Optional[str] = None
@@ -724,6 +728,27 @@ class ImageItem(BaseModel):
     url: Optional[str] = None
     b64_json: Optional[str] = None
     revised_prompt: Optional[str] = None
+
+    def image_bytes(self) -> bytes:
+        """Return the raw image bytes regardless of how the provider returned them.
+
+        Handles both ``b64_json`` and a ``data:`` URI in ``url`` (some models,
+        e.g. ``openai/gpt-image-1``, inline the image as a data URL rather than
+        populating ``b64_json``). Raises ``ValueError`` for a remote http(s)
+        ``url`` (fetch it yourself) or when no image data is present.
+        """
+        import base64
+
+        if self.b64_json:
+            return base64.b64decode(self.b64_json)
+        if self.url and self.url.startswith("data:"):
+            return base64.b64decode(self.url.split(",", 1)[1])
+        if self.url:
+            raise ValueError(
+                "image is a remote URL; fetch it with an HTTP client "
+                "(e.g. httpx.get(item.url).content)"
+            )
+        raise ValueError("image item has neither b64_json nor url")
 
 
 class ImageUsage(BaseModel):
@@ -763,7 +788,7 @@ class ImageGenerationChunk(BaseModel):
 
 class VideoContentItem(BaseModel):
     """A single item in the content array (text, image_url, video_url, audio_url)."""
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     type: str
     text: Optional[str] = None
     image_url: Optional[Dict[str, Any]] = None
@@ -775,7 +800,7 @@ class VideoContentItem(BaseModel):
 
 class VideoGenerationParams(BaseModel):
     """Request body for POST /v1/video/generations."""
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: str
     content: List[VideoContentItem]
     callback_url: Optional[str] = None
@@ -844,7 +869,7 @@ class VideoTaskResponse(BaseModel):
 
 
 class ListVideoGenerationsParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     status: Optional[str] = None
     model: Optional[str] = None
     created_after: Optional[str] = None
@@ -875,7 +900,7 @@ class VideoTaskListResponse(BaseModel):
 
 
 class InitUploadRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     file_name: str
     mime_type: str
     embed: Optional[bool] = None
@@ -917,7 +942,7 @@ class RagFileListResponse(BaseModel):
 
 
 class BulkEmbedRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     file_ids: List[str] = Field(..., min_length=1, max_length=100)
     wait: Optional[bool] = None
     metadata: Optional[Dict[str, Any]] = None
@@ -937,7 +962,7 @@ class BulkEmbedResponse(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     query: str
     top_k: Optional[int] = None
     file_ids: Optional[List[str]] = None
@@ -986,7 +1011,7 @@ class PronunciationDictionaryLocator(BaseModel):
 
 
 class SpeechParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     input: str
     model: Optional[str] = None
     voice: Optional[str] = None
@@ -1015,7 +1040,7 @@ class SpeechParams(BaseModel):
 
 
 class TranscriptionParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: str
     language_code: Optional[str] = None
     tag_audio_events: Optional[bool] = None
@@ -1044,7 +1069,7 @@ class TranscriptionParams(BaseModel):
 
 
 class TranscriptionTranslateParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: Optional[str] = None
     prompt: Optional[str] = None
 
@@ -1056,7 +1081,7 @@ class AudioTranslationsParams(BaseModel):
     POST /v1/audio/transcriptions/translate.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: str
     prompt: Optional[str] = None
     response_format: Optional[str] = None
@@ -1069,7 +1094,7 @@ class TranscriptionResponse(BaseModel):
 
 
 class ListVoicesParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     next_page_token: Optional[str] = None
     page_size: Optional[int] = None
     search: Optional[str] = None
@@ -1138,7 +1163,7 @@ class ModerationInputItem(BaseModel):
 
 
 class ModerationParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     input: Union[str, List[str], List[ModerationInputItem]]
     model: str = "omni-moderation-latest"
 
@@ -1163,7 +1188,7 @@ class ModerationResponse(BaseModel):
 
 
 class WebSearchParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     query: str = Field(..., min_length=1, max_length=2000)
     model: Optional[str] = None
     provider: Optional[Literal["native", "tavily"]] = None
@@ -1200,7 +1225,7 @@ class WebSearchResponse(BaseModel):
 
 
 class RouterSelectParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     messages: List[ChatMessage] = Field(..., min_length=1)
     api_type: Literal["completions", "responses", "embeddings"] = "completions"
     exclude_models: Optional[List[str]] = None
@@ -1225,7 +1250,7 @@ class RouterSelectResponse(BaseModel):
 
 
 class ModelSearchParams(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     q: Optional[str] = None
     free: Optional[bool] = None
     discounted: Optional[bool] = None
@@ -1298,7 +1323,7 @@ class ImageEditParams(BaseModel):
     ``outpaint`` and ``mix`` operations.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     model: str
     image: Union[str, ImageRef]
     prompt: str = ""
