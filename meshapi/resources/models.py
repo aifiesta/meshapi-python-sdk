@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import List, Optional
+from urllib.parse import quote
 
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import ModelInfo, ModelSearchParams, ModelsPage
@@ -33,7 +34,10 @@ class ModelsResource:
         return ModelsPage.model_validate(data)
 
     def get(self, model_id: str) -> ModelInfo:
-        data = self._http.get(f"/v1/models/{model_id}")
+        # Encode special chars but keep "/" — the backend route is
+        # /v1/models/{model_id:path}, so provider-prefixed ids like
+        # "openai/gpt-4o" stay a single path parameter.
+        data = self._http.get(f"/v1/models/{quote(model_id, safe='/')}")
         return ModelInfo.model_validate(data)
 
 
@@ -62,5 +66,6 @@ class AsyncModelsResource:
         return ModelsPage.model_validate(data)
 
     async def get(self, model_id: str) -> ModelInfo:
-        data = await self._http.get(f"/v1/models/{model_id}")
+        # See sync get(): keep "/" for the {model_id:path} route.
+        data = await self._http.get(f"/v1/models/{quote(model_id, safe='/')}")
         return ModelInfo.model_validate(data)
