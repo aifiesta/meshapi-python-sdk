@@ -152,7 +152,8 @@ reply = client.responses.create(
     )
 )
 
-# List background response jobs, or fetch one by id
+# List background response jobs, or fetch a persisted/background response by id.
+# Synchronous create responses are not guaranteed to be retrievable via get().
 jobs = client.responses.list(limit=20)
 job = client.responses.get("resp_abc123")
 ```
@@ -174,7 +175,12 @@ print(len(result.data[0].embedding))
 ## Audio (TTS, STT, voices)
 
 ```python
-from meshapi import SpeechParams, TranscriptionParams, ListVoicesParams
+from meshapi import (
+    AudioTranslationsParams,
+    ListVoicesParams,
+    SpeechParams,
+    TranscriptionParams,
+)
 
 # Text-to-speech — returns raw audio bytes
 audio_bytes = client.audio.synthesize(
@@ -187,24 +193,25 @@ audio_bytes = client.audio.synthesize(
 with open("output.wav", "wb") as f:
     f.write(audio_bytes)
 
-# Speech-to-text — submit transcription job
+# Speech-to-text — send raw audio bytes with a filename hint
+with open("audio.wav", "rb") as f:
+    file_bytes = f.read()
+
 result = client.audio.transcribe(
+    file_bytes,
     TranscriptionParams(
         model="sarvam/saaras:v3",
-        file=open("audio.wav", "rb").read(),
-        file_name="audio.wav",
-        language="en",
-    )
+        language_code="en",
+    ),
+    filename="audio.wav",
 )
 print(result.text)
 
-# Translate audio to English
-translated = client.audio.translate(
-    TranscriptionParams(
-        model="sarvam/saaras:v3",
-        file=open("audio.wav", "rb").read(),
-        file_name="audio.wav",
-    )
+# Translate audio directly to English
+translated = client.audio.audio_translate(
+    file_bytes,
+    AudioTranslationsParams(model="openai/whisper-large-v3"),
+    filename="audio.wav",
 )
 print(translated.text)
 
@@ -562,7 +569,7 @@ from meshapi import (
     BulkEmbedRequest, BulkEmbedResponse,
     SearchRequest, SearchResponse, SearchResult,
     # audio
-    SpeechParams, TranscriptionParams, TranscriptionTranslateParams,
+    SpeechParams, TranscriptionParams, AudioTranslationsParams,
     TranscriptionResponse, ListVoicesParams,
     # video
     VideoGenerationParams, VideoContentItem,
@@ -579,7 +586,7 @@ from meshapi import (
 
 ```python
 import meshapi
-print(meshapi.__version__)  # "0.1.0"
+print(meshapi.__version__)  # "0.1.8"
 ```
 
 ## About Mesh API
