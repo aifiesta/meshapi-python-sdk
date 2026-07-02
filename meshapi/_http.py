@@ -34,7 +34,7 @@ _BACKOFF_BASE_MS = 500
 _BACKOFF_MAX_MS = 30_000
 
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
-_SDK_VERSION_VALUE = "python/0.1.8"
+_SDK_VERSION_VALUE = "python/0.1.9"
 
 
 @dataclass

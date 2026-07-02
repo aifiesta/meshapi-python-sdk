@@ -201,7 +201,7 @@ result = client.audio.transcribe(
     file_bytes,
     TranscriptionParams(
         model="sarvam/saaras:v3",
-        language_code="en",
+        # Optional: language_code is model-specific (e.g. Sarvam expects "en-IN", not "en").
     ),
     filename="audio.wav",
 )
@@ -586,7 +586,7 @@ from meshapi import (
 
 ```python
 import meshapi
-print(meshapi.__version__)  # "0.1.8"
+print(meshapi.__version__)  # "0.1.9"
 ```
 
 ## About Mesh API
