@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from meshapi import MeshAPI, CompareParams, ChatMessage
+from meshapi import MeshAPI, CompareParams, ChatMessage, ModelOverride
 
 
 def test_compare_nonstreaming(client: MeshAPI, model: str, second_model: str) -> None:
@@ -36,3 +36,38 @@ def test_compare_streaming(client: MeshAPI, model: str, second_model: str) -> No
         )
     )
     assert len(events) > 0, "expected at least one streaming event"
+
+
+def test_compare_with_synthesis(client: MeshAPI, model: str, second_model: str) -> None:
+    """Exercise the synthesis path (skip_comparison=False) — previously never tested."""
+    result = client.compare.create(
+        CompareParams(
+            models=[model, second_model],
+            messages=[ChatMessage(role="user", content="In one sentence, what is TCP?")],
+            comparison_instructions="Briefly state which answer is clearer.",
+            skip_comparison=False,
+            max_tokens=60,
+        )
+    )
+    assert result.comparison_id
+    assert len(result.results) == 2
+    # When at least one per-model answer succeeded and the comparison model did
+    # not fall back, a synthesized comparison must be present with usage.
+    if any(r.content for r in result.results) and not result.comparison_fallback_used:
+        assert result.comparison, "expected a synthesized comparison when skip_comparison=False"
+        assert result.comparison_model, "expected comparison_model to be reported"
+        assert result.comparison_usage is not None, "expected comparison_usage to be populated"
+
+
+def test_compare_model_overrides(client: MeshAPI, model: str, second_model: str) -> None:
+    """Per-model overrides (temperature/max_tokens) — previously untested."""
+    result = client.compare.create(
+        CompareParams(
+            models=[model, second_model],
+            messages=[ChatMessage(role="user", content="Say hi in one word.")],
+            model_overrides=[ModelOverride(model=model, temperature=0.0, max_tokens=10)],
+            skip_comparison=True,
+            max_tokens=20,
+        )
+    )
+    assert len(result.results) == 2, "overrides must not drop any model from the fan-out"
