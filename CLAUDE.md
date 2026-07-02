@@ -162,6 +162,7 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_realtime.py` | WebSocket connect/close, session lifecycle |
 | `test_audio.py` | TTS synthesize, voice listing |
 | `test_video.py` | Video list, generate → retrieve |
+| `test_compare.py` | Non-streaming compare, streaming compare |
 
 ---
 
@@ -175,6 +176,40 @@ Every SDK change — however small — must include all of the following before 
 4. **meshapi-docs** — open a follow-up PR (or note in the PR description) to update the [meshapi-docs](https://github.com/aifiesta/meshapi-docs) repository so the developer documentation stays in sync.
 
 ---
+
+---
+
+## Release
+
+Releases are triggered by pushing a `v*` git tag. The `publish.yml` workflow builds the package with hatch and publishes to PyPI via OIDC (no API token needed).
+
+### Release checklist
+
+1. **Bump the version** in `pyproject.toml`:
+   ```toml
+   version = "0.1.6"
+   ```
+
+2. **Commit the version bump**:
+   ```bash
+   git add pyproject.toml
+   git commit -m "chore: bump version to 0.1.6"
+   ```
+
+3. **Tag and push**:
+   ```bash
+   git tag v0.1.6
+   git push origin main
+   git push origin v0.1.6
+   ```
+
+4. **Monitor the workflow** at `Actions → Publish to PyPI`.
+
+5. **Verify** the new version is live:
+   ```bash
+   pip install meshapi==0.1.6
+   python -c "import meshapi; print(meshapi.__version__)"
+   ```
 
 ### RAG live test notes
 

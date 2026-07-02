@@ -11,6 +11,8 @@ from .._types import (
     TranscriptionParams,
     TranscriptionResponse,
     TranscriptionTranslateParams,
+    Voice,
+    VoicesResponse,
 )
 
 
@@ -62,16 +64,18 @@ class AudioResource:
         )
         return TranscriptionResponse.model_validate(data)
 
-    def list_voices(self, params: Optional[ListVoicesParams] = None) -> Any:
+    def list_voices(self, params: Optional[ListVoicesParams] = None) -> VoicesResponse:
         """GET /v1/audio/voices — list/search voices."""
         query: Dict[str, Any] = {}
         if params is not None:
             query = {k: v for k, v in params.model_dump(exclude_none=True).items()}
-        return self._http.get("/v1/audio/voices", params=query or None)
+        data = self._http.get("/v1/audio/voices", params=query or None)
+        return VoicesResponse.model_validate(data)
 
-    def get_voice(self, voice_id: str) -> Any:
+    def get_voice(self, voice_id: str) -> Voice:
         """GET /v1/audio/voices/{voice_id}."""
-        return self._http.get(f"/v1/audio/voices/{voice_id}")
+        data = self._http.get(f"/v1/audio/voices/{voice_id}")
+        return Voice.model_validate(data)
 
 
 class AsyncAudioResource:
@@ -122,13 +126,15 @@ class AsyncAudioResource:
         )
         return TranscriptionResponse.model_validate(data)
 
-    async def list_voices(self, params: Optional[ListVoicesParams] = None) -> Any:
+    async def list_voices(self, params: Optional[ListVoicesParams] = None) -> VoicesResponse:
         """GET /v1/audio/voices — list/search voices."""
         query: Dict[str, Any] = {}
         if params is not None:
             query = {k: v for k, v in params.model_dump(exclude_none=True).items()}
-        return await self._http.get("/v1/audio/voices", params=query or None)
+        data = await self._http.get("/v1/audio/voices", params=query or None)
+        return VoicesResponse.model_validate(data)
 
-    async def get_voice(self, voice_id: str) -> Any:
+    async def get_voice(self, voice_id: str) -> Voice:
         """GET /v1/audio/voices/{voice_id}."""
-        return await self._http.get(f"/v1/audio/voices/{voice_id}")
+        data = await self._http.get(f"/v1/audio/voices/{voice_id}")
+        return Voice.model_validate(data)
