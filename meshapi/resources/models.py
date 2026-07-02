@@ -1,11 +1,12 @@
-"""Models resource — GET /v1/models, /v1/models/free, /v1/models/paid."""
+"""Models resource — GET /v1/models[/free|/paid|/search|/{model_id}]."""
 
 from __future__ import annotations
 
 from typing import List, Optional
+from urllib.parse import quote
 
 from .._http import AsyncHttpClient, SyncHttpClient
-from .._types import ModelInfo
+from .._types import ModelInfo, ModelSearchParams, ModelsPage
 
 
 class ModelsResource:
@@ -27,6 +28,18 @@ class ModelsResource:
         data = self._http.get("/v1/models/paid")
         return [ModelInfo.model_validate(m) for m in (data or [])]
 
+    def search(self, params: Optional[ModelSearchParams] = None) -> ModelsPage:
+        qs = (params or ModelSearchParams()).model_dump(exclude_none=True)
+        data = self._http.get("/v1/models/search", params=qs or None)
+        return ModelsPage.model_validate(data)
+
+    def get(self, model_id: str) -> ModelInfo:
+        # Encode special chars but keep "/" — the backend route is
+        # /v1/models/{model_id:path}, so provider-prefixed ids like
+        # "openai/gpt-4o" stay a single path parameter.
+        data = self._http.get(f"/v1/models/{quote(model_id, safe='/')}")
+        return ModelInfo.model_validate(data)
+
 
 class AsyncModelsResource:
     def __init__(self, http: AsyncHttpClient) -> None:
@@ -46,3 +59,13 @@ class AsyncModelsResource:
     async def paid(self) -> List[ModelInfo]:
         data = await self._http.get("/v1/models/paid")
         return [ModelInfo.model_validate(m) for m in (data or [])]
+
+    async def search(self, params: Optional[ModelSearchParams] = None) -> ModelsPage:
+        qs = (params or ModelSearchParams()).model_dump(exclude_none=True)
+        data = await self._http.get("/v1/models/search", params=qs or None)
+        return ModelsPage.model_validate(data)
+
+    async def get(self, model_id: str) -> ModelInfo:
+        # See sync get(): keep "/" for the {model_id:path} route.
+        data = await self._http.get(f"/v1/models/{quote(model_id, safe='/')}")
+        return ModelInfo.model_validate(data)

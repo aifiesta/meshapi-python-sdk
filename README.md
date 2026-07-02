@@ -45,6 +45,9 @@ Get a key at [meshapi.ai](https://meshapi.ai). Data-plane keys are prefixed `rsk
 | **Multi-model compare** | Fire one prompt at N models in parallel and stream their replies side by side. |
 | **Audio** | Text-to-speech, speech-to-text, transcription translation, and voice listing. |
 | **Video** | Submit and poll async video generation tasks. |
+| **Moderations** | Classify text/image content for policy violations via `moderations.create`. |
+| **Web search** | Live web search with native + Tavily engines via `web.search`. |
+| **Router select** | Ask the Auto Router which model it would pick, without running inference. |
 | **RAG** | Upload files, embed them, and run vector search — all through the same client. |
 | **Batches** | Async bulk inference jobs at discounted rates with inline request submission. |
 | **Prompt templates** | Server-stored prompts with `{{variable}}` slots. Update prompts without redeploying. |
@@ -148,6 +151,10 @@ reply = client.responses.create(
         max_output_tokens=512,
     )
 )
+
+# List background response jobs, or fetch one by id
+jobs = client.responses.list(limit=20)
+job = client.responses.get("resp_abc123")
 ```
 
 ## Embeddings
@@ -262,6 +269,25 @@ result = client.images.generate(
     )
 )
 print(result.data[0].url)
+```
+
+### Editing an image
+
+`image` (and optional `mask` / `reference_images`) take a base64 or
+`data:` URL — remote http(s) URLs are rejected by this endpoint.
+
+```python
+from meshapi import ImageEditParams
+
+edited = client.images.edit(
+    ImageEditParams(
+        model="openai/gpt-image-1",
+        image="data:image/png;base64,<...>",
+        prompt="Replace the background with a beach at sunset",
+        operation="edit",  # or inpaint / outpaint / mix / reframe / upscale / remove_background
+    )
+)
+print(edited.data[0].url or edited.data[0].b64_json[:32])
 ```
 
 ## Compare (multi-model fanout)
@@ -395,9 +421,61 @@ async with AsyncMeshAPI(base_url="...", token="rsk_...") as client:
 ## Models
 
 ```python
+from meshapi import ModelSearchParams
+
 all_models = client.models.list()
 free = client.models.free()
 paid = client.models.paid()
+
+# Paginated catalog search (DB-only, no model cost)
+page = client.models.search(ModelSearchParams(q="gpt", free=False, sort="name", limit=10))
+print(page.total, page.brands)
+
+# Fetch one model's detail
+gpt4o = client.models.get("openai/gpt-4o")
+```
+
+## Moderations
+
+```python
+from meshapi import ModerationParams
+
+result = client.moderations.create(ModerationParams(input="text to classify"))
+if result.results[0].flagged:
+    print("flagged:", result.results[0].categories)
+
+# Batch several inputs in one call
+client.moderations.create(ModerationParams(input=["first text", "second text"]))
+```
+
+## Web search
+
+Gated server-side by `WEB_SEARCH_ENABLED`. Native-first with Tavily fallback;
+inspect `response.provider` to see which engine served the request.
+
+```python
+from meshapi import WebSearchParams
+
+res = client.web.search(
+    WebSearchParams(query="latest news on Mars rovers", max_results=5, include_answer=True)
+)
+print(res.provider, res.answer)
+for hit in res.results:
+    print(hit.title, hit.url)
+```
+
+## Router select
+
+Gated server-side by `AUTO_ROUTER_ENABLED`. Returns the model the Auto Router
+*would* pick — without running inference — so you can run it on your own path.
+
+```python
+from meshapi import RouterSelectParams, ChatMessage
+
+sel = client.router.select(
+    RouterSelectParams(messages=[ChatMessage(role="user", content="Prove that 2+2=4.")])
+)
+print(sel.model, sel.auto_router.fallback_used)
 ```
 
 ## Prompt templates

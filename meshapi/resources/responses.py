@@ -1,11 +1,16 @@
-"""Responses resource — POST /v1/responses."""
+"""Responses resource — POST/GET /v1/responses, GET /v1/responses/{id}."""
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator, Optional
 
 from .._http import AsyncHttpClient, SyncHttpClient
-from .._types import ResponsesParams, ResponsesResponse, ResponsesStreamEvent
+from .._types import (
+    ResponsesListResponse,
+    ResponsesParams,
+    ResponsesResponse,
+    ResponsesStreamEvent,
+)
 
 
 class ResponsesResource:
@@ -24,6 +29,21 @@ class ResponsesResource:
         body["stream"] = True
         yield from self._http.stream_json("/v1/responses", body, ResponsesStreamEvent)
 
+    def list(
+        self, *, after: Optional[str] = None, limit: Optional[int] = None
+    ) -> ResponsesListResponse:
+        params: dict = {}
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        data = self._http.get("/v1/responses", params=params or None)
+        return ResponsesListResponse.model_validate(data)
+
+    def get(self, response_id: str) -> ResponsesResponse:
+        data = self._http.get(f"/v1/responses/{response_id}")
+        return ResponsesResponse.model_validate(data)
+
 
 class AsyncResponsesResource:
     def __init__(self, http: AsyncHttpClient) -> None:
@@ -41,3 +61,18 @@ class AsyncResponsesResource:
         body["stream"] = True
         async for event in self._http.stream_json("/v1/responses", body, ResponsesStreamEvent):
             yield event
+
+    async def list(
+        self, *, after: Optional[str] = None, limit: Optional[int] = None
+    ) -> ResponsesListResponse:
+        params: dict = {}
+        if after is not None:
+            params["after"] = after
+        if limit is not None:
+            params["limit"] = limit
+        data = await self._http.get("/v1/responses", params=params or None)
+        return ResponsesListResponse.model_validate(data)
+
+    async def get(self, response_id: str) -> ResponsesResponse:
+        data = await self._http.get(f"/v1/responses/{response_id}")
+        return ResponsesResponse.model_validate(data)

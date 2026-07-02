@@ -46,6 +46,8 @@ from ._types import (
     InitUploadRequest,
     InitUploadResponse,
     ImageDetail,
+    ImageEditParams,
+    ImageRef,
     ImageGenerationParams,
     ImageGenerationResponse,
     ImageItem,
@@ -62,6 +64,21 @@ from ._types import (
     VideoTaskUsage,
     InputAudio,
     ListModelsParams,
+    ModelSearchParams,
+    ModelsPage,
+    ResponsesListItem,
+    ResponsesListResponse,
+    ModerationImageUrl,
+    ModerationInputItem,
+    ModerationParams,
+    ModerationResponse,
+    ModerationResult,
+    WebSearchParams,
+    WebSearchResponse,
+    WebSearchResultItem,
+    RouterSelectParams,
+    RouterSelectResponse,
+    AutoRouterMeta,
     ModelOverride,
     ModelInfo,
     ModelPricing,
@@ -102,6 +119,9 @@ from .resources.embeddings import AsyncEmbeddingsResource, EmbeddingsResource
 from .resources.images import AsyncImagesResource, ImagesResource
 from .resources.rag import AsyncRagResource, RagResource
 from .resources.models import AsyncModelsResource, ModelsResource
+from .resources.moderations import AsyncModerationsResource, ModerationsResource
+from .resources.web_search import AsyncWebResource, WebResource
+from .resources.router_select import AsyncRouterResource, RouterResource
 from .resources.realtime import (
     AsyncRealtimeResource,
     AsyncRealtimeSession,
@@ -130,6 +150,8 @@ __all__ = [
     "ImageDetail",
     "InputAudio",
     "ImageOptions",
+    "ImageEditParams",
+    "ImageRef",
     "ImageGenerationParams",
     "ImageGenerationResponse",
     "ImageItem",
@@ -164,6 +186,10 @@ __all__ = [
     "ResponsesResponse",
     "ResponsesStreamEvent",
     "ModelOverride",
+    "ModelSearchParams",
+    "ModelsPage",
+    "ResponsesListItem",
+    "ResponsesListResponse",
     "CompareParams",
     "TokenUsage",
     "CompareResponse",
@@ -178,6 +204,26 @@ __all__ = [
     "TemplateSummary",
     "ApiErrorBody",
     "ApiErrorEnvelope",
+    # Moderations
+    "ModerationsResource",
+    "AsyncModerationsResource",
+    "ModerationParams",
+    "ModerationImageUrl",
+    "ModerationInputItem",
+    "ModerationResult",
+    "ModerationResponse",
+    # Web search
+    "WebResource",
+    "AsyncWebResource",
+    "WebSearchParams",
+    "WebSearchResultItem",
+    "WebSearchResponse",
+    # Router select
+    "RouterResource",
+    "AsyncRouterResource",
+    "RouterSelectParams",
+    "AutoRouterMeta",
+    "RouterSelectResponse",
     # Realtime
     "RealtimeResource",
     "AsyncRealtimeResource",
@@ -273,6 +319,9 @@ class MeshAPI:
         self.videos = VideosResource(http)
         self.audio = AudioResource(http)
         self.rag = RagResource(http)
+        self.moderations = ModerationsResource(http)
+        self.web = WebResource(http)
+        self.router = RouterResource(http)
         self.realtime = RealtimeResource(config)
         self._http = http
 
@@ -333,6 +382,9 @@ class AsyncMeshAPI:
         self.videos = AsyncVideosResource(http)
         self.audio = AsyncAudioResource(http)
         self.rag = AsyncRagResource(http)
+        self.moderations = AsyncModerationsResource(http)
+        self.web = AsyncWebResource(http)
+        self.router = AsyncRouterResource(http)
         self.realtime = AsyncRealtimeResource(config)
         self._http = http
 

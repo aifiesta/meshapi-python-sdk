@@ -972,3 +972,202 @@ class ApiErrorEnvelope(BaseModel):
     model_config = ConfigDict(extra="ignore")
     error: ApiErrorBody
     request_id: str
+
+
+# ---------------------------------------------------------------------------
+# Moderations — POST /v1/moderations
+# ---------------------------------------------------------------------------
+
+
+class ModerationImageUrl(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    url: str
+
+
+class ModerationInputItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    type: Literal["text", "image_url"]
+    text: Optional[str] = None
+    image_url: Optional[ModerationImageUrl] = None
+
+
+class ModerationParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    input: Union[str, List[str], List[ModerationInputItem]]
+    model: str = "omni-moderation-latest"
+
+
+class ModerationResult(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    flagged: bool
+    categories: Dict[str, bool] = Field(default_factory=dict)
+    category_scores: Dict[str, float] = Field(default_factory=dict)
+
+
+class ModerationResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: Optional[str] = None
+    model: Optional[str] = None
+    results: List[ModerationResult] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Web search — POST /v1/web/search
+# ---------------------------------------------------------------------------
+
+
+class WebSearchParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    query: str = Field(..., min_length=1, max_length=2000)
+    model: Optional[str] = None
+    provider: Optional[Literal["native", "tavily"]] = None
+    max_results: int = Field(default=5, ge=1, le=20)
+    search_depth: Literal["basic", "advanced"] = "basic"
+    include_domains: Optional[List[str]] = None
+    exclude_domains: Optional[List[str]] = None
+    include_answer: bool = False
+
+
+class WebSearchResultItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    title: str
+    url: str
+    content: str = ""
+    score: Optional[float] = None
+    published_date: Optional[str] = None
+
+
+class WebSearchResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    query: str
+    answer: Optional[str] = None
+    results: List[WebSearchResultItem] = Field(default_factory=list)
+    # `provider` is always one of native|tavily today, but typed as str so an
+    # added engine never breaks response parsing for existing SDK versions.
+    provider: str
+    request_id: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Router select — POST /v1/router/select
+# ---------------------------------------------------------------------------
+
+
+class RouterSelectParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    messages: List[ChatMessage] = Field(..., min_length=1)
+    api_type: Literal["completions"] = "completions"
+    exclude_models: Optional[List[str]] = None
+
+
+class AutoRouterMeta(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    fallback_used: bool = False
+    fallback_reason: Optional[str] = None
+
+
+class RouterSelectResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    auto_router: AutoRouterMeta
+    reasoning_effort: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Models — GET /v1/models/search (paginated catalog search)
+# ---------------------------------------------------------------------------
+
+
+class ModelSearchParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    q: Optional[str] = None
+    free: Optional[bool] = None
+    discounted: Optional[bool] = None
+    input_modality: Optional[List[str]] = None
+    output_modality: Optional[List[str]] = None
+    brand: Optional[List[str]] = None
+    sort: Optional[Literal["brand", "name", "id", "context_length"]] = None
+    order: Optional[Literal["asc", "desc"]] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+
+
+class ModelsPage(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    items: List[ModelInfo] = Field(default_factory=list)
+    total: int
+    limit: int
+    offset: int
+    brands: List[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Responses — GET /v1/responses (list background jobs) + GET /v1/responses/{id}
+# ---------------------------------------------------------------------------
+
+
+class ResponsesListItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    object: Optional[str] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    status: Optional[str] = None
+    created_at: Optional[int] = None
+    completed_at: Optional[int] = None
+    usage_synced: Optional[bool] = None
+
+
+class ResponsesListResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    object: Optional[str] = None
+    data: List[ResponsesListItem] = Field(default_factory=list)
+    has_more: bool = False
+    first_id: Optional[str] = None
+    last_id: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Images — POST /v1/images/edits (edit / inpaint / outpaint / upscale / …)
+# ---------------------------------------------------------------------------
+
+
+class ImageRef(BaseModel):
+    """An image reference for the edits endpoint: a data URL or bare base64.
+
+    ``url`` must be ``data:image/<fmt>;base64,<b64>`` or a bare base64 string —
+    remote http(s) URLs are rejected by this endpoint. You may also pass the
+    string directly instead of wrapping it in ImageRef.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    url: str
+
+
+class ImageEditParams(BaseModel):
+    """Request body for POST /v1/images/edits (JSON/base64 mode).
+
+    ``image`` (and ``mask`` / ``reference_images``) accept a base64 / data-URL
+    string or an :class:`ImageRef`. ``prompt`` is required for the ``edit``,
+    ``outpaint`` and ``mix`` operations.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+    model: str
+    image: Union[str, ImageRef]
+    prompt: str = ""
+    operation: Literal[
+        "edit", "inpaint", "outpaint", "mix", "reframe", "upscale", "remove_background"
+    ] = "edit"
+    mask: Optional[Union[str, ImageRef]] = None
+    reference_images: Optional[List[Union[str, ImageRef]]] = None
+    n: Optional[int] = None
+    size: Optional[str] = None
+    response_format: Optional[Literal["url", "b64_json"]] = None
+    background: Optional[str] = None
+    upscale_factor: Optional[str] = None
+    quality_tier: Optional[str] = None
+    aspect_ratio: Optional[str] = None
+    resolution: Optional[str] = None
+    expand_factor: Optional[Union[str, float]] = None
+    mask_feather: Optional[int] = None
