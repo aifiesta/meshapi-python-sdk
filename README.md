@@ -399,26 +399,33 @@ from meshapi import MeshAPI
 client = MeshAPI(base_url="...", token="rsk_...")
 
 # Sync — use as a context manager
-with client.realtime.connect(model="openai/gpt-4o-realtime-preview") as session:
+with client.realtime.connect(model="openai/gpt-realtime-mini") as session:
     session.send({
         "type": "session.update",
-        "session": {"instructions": "You are a helpful assistant."},
+        "session": {
+            "type": "realtime",
+            "output_modalities": ["audio"],
+            "instructions": "You are a helpful assistant.",
+            "audio": {
+                "input": {"format": {"type": "audio/pcm", "rate": 24000}},
+                "output": {"format": {"type": "audio/pcm", "rate": 24000}, "voice": "alloy"},
+            },
+        },
     })
-    session.send_audio(pcm_bytes)          # binary audio frame
+    session.send_audio(pcm_bytes)          # PCM16 24kHz; sent as base64 input_audio_buffer.append
 
     for msg in session:                    # iterate until connection closes
-        print(msg.event["type"])           # "session.created", "response.done", …
-        if msg.audio:                      # binary audio frame from server
+        if msg.audio:                      # decoded from response.output_audio.delta
             process_audio(msg.audio)
-        if msg.event and msg.event["type"] == "response.done":
+        elif msg.event and msg.event["type"] == "response.done":
             break
 
 # Async — identical API with await
 from meshapi import AsyncMeshAPI
 
 async with AsyncMeshAPI(base_url="...", token="rsk_...") as client:
-    async with client.realtime.connect(model="openai/gpt-4o-realtime-preview") as session:
-        await session.send({"type": "session.update", "session": {...}})
+    async with client.realtime.connect(model="openai/gpt-realtime-mini") as session:
+        await session.send({"type": "session.update", "session": {"type": "realtime", "output_modalities": ["text"]}})
         async for msg in session:
             print(msg.event["type"])
 ```
@@ -586,7 +593,7 @@ from meshapi import (
 
 ```python
 import meshapi
-print(meshapi.__version__)  # "0.1.10"
+print(meshapi.__version__)  # "0.1.11"
 ```
 
 ## About Mesh API

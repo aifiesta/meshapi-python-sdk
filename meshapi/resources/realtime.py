@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import ssl as _ssl
 from typing import Any, AsyncIterator, Iterator, Optional
 from urllib.parse import quote
+
+# Server events that carry base64 output audio in their "delta" field. The
+# realtime API sends audio in-band as base64 JSON events (GA:
+# response.output_audio.delta, beta: response.audio.delta) rather than as
+# binary WebSocket frames, so we decode them into RealtimeMessage.audio.
+_AUDIO_DELTA_TYPES = {"response.output_audio.delta", "response.audio.delta"}
 
 from .._errors import MeshAPIError
 from .._http import MeshAPIConfig, _SDK_VERSION_VALUE
@@ -48,8 +55,10 @@ class RealtimeError(MeshAPIError):
 class RealtimeMessage:
     """A single frame received from the server.
 
-    Exactly one of ``text`` or ``audio`` is set per message.
-    ``event`` holds the parsed JSON map for text frames.
+    ``event`` holds the parsed JSON map for a server event. For output-audio
+    delta events (``response.output_audio.delta`` / ``response.audio.delta``),
+    ``audio`` additionally carries the decoded raw audio bytes so callers can
+    do ``if msg.audio: play(msg.audio)`` while still inspecting ``msg.event``.
     """
 
     __slots__ = ("text", "audio", "event")
@@ -88,7 +97,15 @@ def _parse_frame(data: str | bytes) -> RealtimeMessage | None:
         evt: dict[str, Any] = json.loads(data)
     except (json.JSONDecodeError, ValueError):
         return RealtimeMessage(text=data)
-    return RealtimeMessage(text=data, event=evt)
+    audio: bytes | None = None
+    if evt.get("type") in _AUDIO_DELTA_TYPES:
+        delta = evt.get("delta")
+        if isinstance(delta, str):
+            try:
+                audio = base64.b64decode(delta)
+            except (ValueError, TypeError):
+                audio = None
+    return RealtimeMessage(text=data, event=evt, audio=audio)
 
 
 def _check_error_envelope(msg: RealtimeMessage) -> None:
@@ -141,8 +158,12 @@ class AsyncRealtimeSession:
         await self._ws.send(json.dumps(event))
 
     async def send_audio(self, audio: bytes) -> None:
-        """Send raw audio *bytes* as a binary WebSocket frame."""
-        await self._ws.send(audio)
+        """Append raw PCM16 audio to the input buffer.
+
+        Sent as a base64 ``input_audio_buffer.append`` text event — the realtime
+        API does not accept binary WebSocket frames.
+        """
+        await self.send({"type": "input_audio_buffer.append", "audio": base64.b64encode(audio).decode("ascii")})
 
     async def receive(self) -> RealtimeMessage:
         """Read the next frame from the server.
@@ -279,8 +300,12 @@ class RealtimeSession:
         self._ws.send(json.dumps(event))
 
     def send_audio(self, audio: bytes) -> None:
-        """Send raw audio *bytes* as a binary WebSocket frame."""
-        self._ws.send(audio)
+        """Append raw PCM16 audio to the input buffer.
+
+        Sent as a base64 ``input_audio_buffer.append`` text event — the realtime
+        API does not accept binary WebSocket frames.
+        """
+        self.send({"type": "input_audio_buffer.append", "audio": base64.b64encode(audio).decode("ascii")})
 
     def receive(self) -> RealtimeMessage:
         """Read the next frame from the server.

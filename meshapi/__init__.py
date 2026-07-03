@@ -140,7 +140,7 @@ from .resources.realtime import (
 from .resources.responses import AsyncResponsesResource, ResponsesResource
 from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 __all__ = [
     "__version__",
     "MeshAPI",

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshapi"
-version = "0.1.10"
+version = "0.1.11"
 description = "Official Python SDK for the MeshAPI AI model gateway"
 readme = "README.md"
 requires-python = ">=3.9"
