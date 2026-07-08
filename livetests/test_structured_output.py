@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from pydantic import BaseModel
 from meshapi import MeshAPI, ChatCompletionParams, ChatMessage
 
 MODELS = [
@@ -84,3 +85,46 @@ def test_structured_output_finish_reason(client: MeshAPI, so_model: str) -> None
     assert "name" in data
     assert "position_from_sun" in data
     assert isinstance(data["position_from_sun"], int), f"expected integer position: {data}"
+
+
+# ---------------------------------------------------------------------------
+# .parse() ergonomic API (MESH-363)
+# ---------------------------------------------------------------------------
+
+class CountryLT(BaseModel):
+    country: str
+    capital: str
+
+
+@pytest.mark.parametrize("so_model", MODELS)
+def test_parse_pydantic_live(client: MeshAPI, so_model: str) -> None:
+    out = client.chat.completions.parse(
+        ChatCompletionParams(
+            model=so_model,
+            messages=[ChatMessage(role="user", content="What is the capital of France?")],
+            temperature=0,
+            max_tokens=1000,
+        ),
+        response_format=CountryLT,
+    )
+    assert isinstance(out, CountryLT)
+    assert "paris" in out.capital.lower()
+
+
+@pytest.mark.parametrize("so_model", MODELS)
+def test_parse_raw_dict_live(client: MeshAPI, so_model: str) -> None:
+    out = client.chat.completions.parse(
+        ChatCompletionParams(
+            model=so_model,
+            messages=[ChatMessage(role="user", content="Name any planet. Use the schema.")],
+            temperature=0,
+            max_tokens=1000,
+        ),
+        response_format={
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+            "additionalProperties": False,
+        },
+    )
+    assert isinstance(out, dict) and "name" in out
