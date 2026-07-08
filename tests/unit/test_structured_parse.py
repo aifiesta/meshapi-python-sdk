@@ -1,0 +1,208 @@
+"""Unit tests for structured-output helpers and chat.completions.parse()."""
+
+from __future__ import annotations
+
+import json
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from pydantic import BaseModel, ValidationError
+from typing_extensions import TypedDict  # 3.9-safe TypedDict for tests
+
+from meshapi import _structured as S
+from meshapi._types import (
+    ChatCompletionChoice,
+    ChatCompletionMessage,
+    ChatCompletionParams,
+    ChatCompletionResponse,
+    ChatMessage,
+)
+from meshapi.resources.chat import AsyncCompletionsResource, CompletionsResource
+
+
+class Address(BaseModel):
+    city: str
+    zip: str
+
+
+class Person(BaseModel):
+    name: str
+    age: int
+    address: Address  # nested — AC#3
+
+
+class PersonTD(TypedDict):
+    name: str
+    age: int
+
+
+def _resp(content) -> ChatCompletionResponse:
+    return ChatCompletionResponse(
+        id="c1", object="chat.completion", created=0, model="m",
+        choices=[ChatCompletionChoice(
+            index=0,
+            message=ChatCompletionMessage(role="assistant", content=content),
+            finish_reason="stop",
+        )],
+    )
+
+
+def _payload(content: str) -> dict:
+    return {
+        "id": "c1", "object": "chat.completion", "created": 0, "model": "m",
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": content},
+                     "finish_reason": "stop"}],
+    }
+
+
+def _params():
+    return ChatCompletionParams(model="m", messages=[ChatMessage(role="user", content="hi")])
+
+
+# ---------------------------------------------------------------------------
+# detect_kind
+# ---------------------------------------------------------------------------
+
+def test_detect_kind_model():
+    assert S.detect_kind(Person) == "model"
+
+def test_detect_kind_adapter_for_typeddict():
+    assert S.detect_kind(PersonTD) == "adapter"
+
+def test_detect_kind_raw_for_dict():
+    assert S.detect_kind({"type": "object"}) == "raw"
+
+
+# ---------------------------------------------------------------------------
+# build_response_format
+# ---------------------------------------------------------------------------
+
+def test_build_response_format_model_wraps_schema():
+    rf = S.build_response_format(Person)
+    assert rf["type"] == "json_schema"
+    assert rf["json_schema"]["name"] == "Person"
+    assert rf["json_schema"]["schema"]["properties"]["name"]["type"] == "string"
+
+def test_build_response_format_raw_bare_schema_gets_wrapped():
+    rf = S.build_response_format({"type": "object", "properties": {}})
+    assert rf["type"] == "json_schema"
+    assert rf["json_schema"]["schema"]["type"] == "object"
+
+def test_build_response_format_raw_full_wrapper_passes_through():
+    wrapper = {"type": "json_schema", "json_schema": {"name": "x", "schema": {}}}
+    assert S.build_response_format(wrapper) == wrapper
+
+
+# ---------------------------------------------------------------------------
+# parse_content
+# ---------------------------------------------------------------------------
+
+def test_parse_content_model_returns_instance_nested():
+    content = json.dumps({"name": "A", "age": 3, "address": {"city": "NYC", "zip": "10001"}})
+    out = S.parse_content(Person, content)
+    assert isinstance(out, Person)
+    assert isinstance(out.address, Address)  # deep nesting parsed — AC#3
+    assert out.address.city == "NYC"
+
+def test_parse_content_typeddict_returns_dict():
+    out = S.parse_content(PersonTD, json.dumps({"name": "A", "age": 3}))
+    assert out == {"name": "A", "age": 3}
+
+def test_parse_content_raw_returns_dict_unvalidated():
+    out = S.parse_content({"type": "object"}, json.dumps({"anything": 1}))
+    assert out == {"anything": 1}
+
+def test_parse_content_model_bad_raises_validation_error():
+    with pytest.raises(ValidationError):
+        S.parse_content(Person, json.dumps({"name": "A"}))  # missing age/address
+
+def test_parse_content_raw_bad_json_raises():
+    with pytest.raises(json.JSONDecodeError):
+        S.parse_content({"type": "object"}, "not json")
+
+
+# ---------------------------------------------------------------------------
+# extract_content
+# ---------------------------------------------------------------------------
+
+def test_extract_content_returns_string():
+    assert S.extract_content(_resp("hello")) == "hello"
+
+def test_extract_content_none_returns_empty_string():
+    assert S.extract_content(_resp(None)) == ""
+
+
+# ---------------------------------------------------------------------------
+# sync parse()
+# ---------------------------------------------------------------------------
+
+def test_parse_pydantic_returns_instance_and_sends_schema():
+    http = MagicMock()
+    http.post.return_value = _payload(json.dumps(
+        {"name": "A", "age": 3, "address": {"city": "NYC", "zip": "10001"}}))
+    out = CompletionsResource(http).parse(_params(), Person)
+    assert isinstance(out, Person) and out.address.city == "NYC"
+    path, body = http.post.call_args.args
+    assert path == "/v1/chat/completions"
+    assert body["stream"] is False
+    assert body["response_format"]["json_schema"]["name"] == "Person"
+
+
+def test_parse_typeddict_returns_dict():
+    http = MagicMock()
+    http.post.return_value = _payload(json.dumps({"name": "A", "age": 3}))
+    out = CompletionsResource(http).parse(_params(), PersonTD)
+    assert out == {"name": "A", "age": 3}
+
+
+def test_parse_raw_dict_returns_dict():
+    http = MagicMock()
+    http.post.return_value = _payload(json.dumps({"x": 1}))
+    out = CompletionsResource(http).parse(_params(), {"type": "object"})
+    assert out == {"x": 1}
+
+
+def test_parse_default_no_retry_raises_on_bad():
+    http = MagicMock()
+    http.post.return_value = _payload(json.dumps({"name": "A"}))  # missing fields
+    with pytest.raises(ValidationError):
+        CompletionsResource(http).parse(_params(), Person)
+    assert http.post.call_count == 1
+
+
+def test_parse_retry_recovers_and_appends_correction():
+    http = MagicMock()
+    http.post.side_effect = [
+        _payload(json.dumps({"name": "A"})),  # bad
+        _payload(json.dumps({"name": "A", "age": 3, "address": {"city": "X", "zip": "1"}})),  # good
+    ]
+    out = CompletionsResource(http).parse(_params(), Person, max_retries=1)
+    assert isinstance(out, Person)
+    assert http.post.call_count == 2
+    _, second_body = http.post.call_args.args
+    roles = [m["role"] for m in second_body["messages"]]
+    assert roles == ["user", "assistant", "user"]  # original + bad output + correction
+
+
+def test_parse_retry_exhausted_raises():
+    http = MagicMock()
+    http.post.side_effect = [_payload(json.dumps({"name": "A"}))] * 3
+    with pytest.raises(ValidationError):
+        CompletionsResource(http).parse(_params(), Person, max_retries=1)
+    assert http.post.call_count == 2  # initial + 1 retry
+
+
+# ---------------------------------------------------------------------------
+# async parse()
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_async_parse_pydantic_and_retry():
+    http = MagicMock()
+    http.post = AsyncMock(side_effect=[
+        _payload(json.dumps({"name": "A"})),  # bad
+        _payload(json.dumps({"name": "A", "age": 3, "address": {"city": "X", "zip": "1"}})),
+    ])
+    out = await AsyncCompletionsResource(http).parse(_params(), Person, max_retries=1)
+    assert isinstance(out, Person)
+    assert http.post.await_count == 2
