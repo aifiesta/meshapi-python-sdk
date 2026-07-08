@@ -138,6 +138,53 @@ params = ChatCompletionParams(
 )
 ```
 
+## Structured outputs
+
+Constrain the model to a JSON schema and get a parsed, typed result back.
+Pass a Pydantic model, a `TypedDict`/dataclass, or a raw JSON-schema `dict`.
+
+```python
+from pydantic import BaseModel
+from meshapi import MeshAPI, ChatCompletionParams, ChatMessage
+
+class Country(BaseModel):
+    country: str
+    capital: str
+    population_millions: float
+
+client = MeshAPI(base_url="https://api.meshapi.ai", token="rsk_...")
+
+country = client.chat.completions.parse(
+    ChatCompletionParams(
+        model="openai/gpt-4o-mini",
+        messages=[ChatMessage(role="user", content="Give me structured facts about France.")],
+    ),
+    response_format=Country,
+)
+print(country.capital, country.population_millions)  # typed, with IDE autocomplete
+```
+
+`parse()` returns the parsed object directly:
+
+| `response_format` | Returns |
+|---|---|
+| Pydantic `BaseModel` subclass | an instance of that model |
+| `TypedDict` / dataclass | the validated object |
+| raw JSON-schema `dict` | a `dict` (`json.loads`, unvalidated) |
+
+### Auto-retry on validation failure (opt-in)
+
+Some providers only best-effort the schema. Set `max_retries` to feed a failed
+response back to the model with the validation error appended. Each retry is a
+billed call; the default is `0` (no retry).
+
+```python
+country = client.chat.completions.parse(params, Country, max_retries=3)
+```
+
+`parse()` is non-streaming. Use `create()` when you need the raw string content
+plus `usage`/cost metadata. `AsyncMeshAPI` exposes the same `await client.chat.completions.parse(...)`.
+
 ## Responses API (reasoning models)
 
 ```python
