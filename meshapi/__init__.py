@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from ._errors import MeshAPIError
 from ._http import AsyncHttpClient, MeshAPIConfig, SyncHttpClient
+from ._resilience import (
+    DEFAULT_FALLBACK_STATUS_CODES,
+    DEFAULT_RETRY_STATUS_CODES,
+    FallbackConfig,
+    FallbackEvent,
+    GatewayRoutingEvent,
+    ResilienceEvent,
+    ResilienceLogger,
+    RetryEvent,
+    RetryPolicy,
+    format_resilience_event,
+)
 from ._types import (
     ApiErrorBody,
     ApiErrorEnvelope,
@@ -147,6 +159,17 @@ __all__ = [
     "AsyncMeshAPI",
     "MeshAPIConfig",
     "MeshAPIError",
+    # resilience
+    "RetryPolicy",
+    "FallbackConfig",
+    "RetryEvent",
+    "FallbackEvent",
+    "GatewayRoutingEvent",
+    "ResilienceEvent",
+    "ResilienceLogger",
+    "format_resilience_event",
+    "DEFAULT_RETRY_STATUS_CODES",
+    "DEFAULT_FALLBACK_STATUS_CODES",
     # types
     "ChatRole",
     "ChatMessage",
@@ -313,6 +336,10 @@ class MeshAPI:
         timeout: float = 60.0,
         max_retries: int = 3,
         httpx_client: Any = None,
+        retry: Optional[RetryPolicy] = None,
+        fallback: Optional[FallbackConfig] = None,
+        logger: Optional[ResilienceLogger] = None,
+        debug: bool = False,
     ) -> None:
         config = MeshAPIConfig(
             base_url=base_url,
@@ -320,6 +347,10 @@ class MeshAPI:
             timeout=timeout,
             max_retries=max_retries,
             httpx_client=httpx_client,
+            retry=retry,
+            fallback=fallback,
+            logger=logger,
+            debug=debug,
         )
         http = SyncHttpClient(config)
         self.chat = ChatResource(http)
@@ -376,6 +407,10 @@ class AsyncMeshAPI:
         timeout: float = 60.0,
         max_retries: int = 3,
         async_httpx_client: Any = None,
+        retry: Optional[RetryPolicy] = None,
+        fallback: Optional[FallbackConfig] = None,
+        logger: Optional[ResilienceLogger] = None,
+        debug: bool = False,
     ) -> None:
         config = MeshAPIConfig(
             base_url=base_url,
@@ -383,6 +418,10 @@ class AsyncMeshAPI:
             timeout=timeout,
             max_retries=max_retries,
             async_httpx_client=async_httpx_client,
+            retry=retry,
+            fallback=fallback,
+            logger=logger,
+            debug=debug,
         )
         http = AsyncHttpClient(config)
         self.chat = AsyncChatResource(http)

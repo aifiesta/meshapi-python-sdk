@@ -546,13 +546,95 @@ except MeshAPIError as e:
 | `upstream_error` | 500 | Upstream or server error |
 | `stream_interrupted` | n/a | Mid-stream connection dropped |
 
-## Retry and backoff
+## Resilience: retry, fallback, and observability
 
-Retries on 429/502/503/504 with exponential backoff (default 3 retries, 500 ms base, 30 s max). **Streams do not retry.**
+### Transport retry
+
+Every non-streaming request retries on 429/502/503/504 with exponential
+backoff + jitter, honouring `Retry-After` (default 3 retries, 500 ms base,
+30 s max). **Streams never retry.** The policy is configurable:
 
 ```python
-client = MeshAPI(base_url="...", token="rsk_...", max_retries=5, timeout=30.0)
+from meshapi import MeshAPI, RetryPolicy
+
+client = MeshAPI(
+    base_url=base_url,
+    token=token,
+    retry=RetryPolicy(
+        max_retries=5,                    # default 3
+        retry_on_status=[429, 503],       # default (429, 502, 503, 504)
+        backoff_base_ms=250,              # default 500
+        backoff_max_ms=10_000,            # default 30_000
+        respect_retry_after=True,         # default True
+        retry_on_network_error=True,      # default False — POSTs are non-idempotent
+    ),
+)
 ```
+
+(The top-level `max_retries` option still works and maps onto
+`retry.max_retries`; `retry` wins when both are set.)
+
+Network-error retry is opt-in and never applies to timeouts or cancellation —
+a timed-out request may already be executing server-side.
+
+### Model fallback chain
+
+`chat.completions.create` (non-streaming) can fall back to other models when
+the primary fails with a transient error (default 502/503/504, after transport
+retries). Configure a chain client-wide or per call:
+
+```python
+from meshapi import MeshAPI, FallbackConfig
+
+client = MeshAPI(
+    base_url=base_url,
+    token=token,
+    fallback=FallbackConfig(models=["anthropic/claude-sonnet-5", "mistral/mistral-large"]),
+)
+
+# Per-call override (never sent to the server):
+client.chat.completions.create(
+    ChatCompletionParams(model="openai/gpt-4o", messages=messages),
+    fallback_models=["anthropic/claude-sonnet-5"],
+)
+```
+
+Terminal errors (auth, validation, billing) never advance the chain. This is
+distinct from the `models` request param, which is a server-side
+provider-handled list.
+
+### Seeing what happened: `debug` and `logger`
+
+With `debug=True`, every retry and fallback prints a readable line to stderr:
+
+```
+[meshapi] retrying POST /v1/chat/completions (attempt 1/4 failed: 503, next in 512ms) [req_abc]
+[meshapi] falling back openai/gpt-4o → anthropic/claude-sonnet-5 (1/2: 503 provider_not_available)
+[meshapi] gateway served /v1/chat/completions via bedrock (2 attempts, provider fallback) [req_abc]
+```
+
+For structured logging, pass a `logger` — it receives every `retry`,
+`fallback`, and `gateway-routing` event (dataclasses with a `type` field):
+
+```python
+def on_event(event):
+    if event.type == "retry":
+        my_log.warning("meshapi retry: %s", event)
+    if event.type == "fallback":
+        my_log.warning("meshapi fallback: %s", event)
+    if event.type == "gateway-routing" and event.fallback:
+        my_log.info("served by %s after %d attempts", event.served_provider, event.attempts)
+
+client = MeshAPI(base_url=base_url, token=token, logger=on_event)
+```
+
+`gateway-routing` events report the **server-side** resilience the gateway
+itself performed (per-key `routing_policy`: same-target retries +
+cross-provider fallback), parsed from the `X-Mesh-Routing-Attempts` /
+`X-Mesh-Routing-Fallback` / `X-Mesh-Served-Provider` response headers. They
+appear only when your API key has an active routing policy. Streaming
+responses carry no routing headers — check your MeshAPI dashboard logs for
+per-request routing detail instead.
 
 ## Type hints
 
@@ -586,6 +668,9 @@ from meshapi import (
     ModelInfo, ModelPricing,
     # templates
     CreateTemplateParams, UpdateTemplateParams, TemplateSummary,
+    # resilience
+    RetryPolicy, FallbackConfig,
+    RetryEvent, FallbackEvent, GatewayRoutingEvent, ResilienceEvent,
 )
 ```
 
