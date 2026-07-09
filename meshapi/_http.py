@@ -6,6 +6,7 @@ import asyncio
 import json
 import math
 import random
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import (
@@ -14,7 +15,6 @@ from typing import (
     Dict,
     Iterator,
     Optional,
-    Set,
     Type,
     TypeVar,
     Union,
@@ -23,18 +23,33 @@ from typing import (
 import httpx
 
 from ._errors import MeshAPIError
+from ._resilience import (
+    FallbackConfig,
+    GatewayRoutingEvent,
+    ResilienceEvent,
+    ResilienceLogger,
+    ResolvedRetryPolicy,
+    RetryEvent,
+    RetryPolicy,
+    format_resilience_event,
+    resolve_retry_policy,
+)
 from ._types import ChatCompletionChunk
 
 T = TypeVar("T")
 
-_RETRY_STATUS_CODES: Set[int] = {429, 502, 503, 504}
 _DEFAULT_TIMEOUT = 60.0
 _DEFAULT_MAX_RETRIES = 3
-_BACKOFF_BASE_MS = 500
-_BACKOFF_MAX_MS = 30_000
 
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
 _SDK_VERSION_VALUE = "python/0.1.11"
+
+# Gateway routing-outcome headers (FT-244) — present when the API key's
+# routing_policy is active. See _resilience.py (GatewayRoutingEvent).
+_ROUTING_ATTEMPTS_HEADER = "x-mesh-routing-attempts"
+_ROUTING_FALLBACK_HEADER = "x-mesh-routing-fallback"
+_SERVED_PROVIDER_HEADER = "x-mesh-served-provider"
+_REQUEST_ID_HEADER = "x-request-id"
 
 
 @dataclass
@@ -42,9 +57,28 @@ class MeshAPIConfig:
     base_url: str
     token: str
     timeout: float = _DEFAULT_TIMEOUT
+    #: Deprecated alias for ``retry.max_retries`` (``retry`` wins when set).
     max_retries: int = _DEFAULT_MAX_RETRIES
     httpx_client: Optional[httpx.Client] = field(default=None, repr=False)
     async_httpx_client: Optional[httpx.AsyncClient] = field(default=None, repr=False)
+    #: Transport retry policy: which statuses to retry, backoff shape, whether
+    #: to honour ``Retry-After``, and (opt-in) network-error retry. Streaming
+    #: requests are never retried.
+    retry: Optional[RetryPolicy] = None
+    #: Client-side model-fallback chain for ``chat.completions.create``
+    #: (non-streaming): when the primary model's request exhausts its retries
+    #: on a transient error, the SDK re-issues it against each model in the
+    #: chain until one succeeds. Each hop fires a ``fallback`` event.
+    fallback: Optional[FallbackConfig] = None
+    #: Structured sink for resilience events — every transport retry, every
+    #: fallback hop, and every gateway-side routing outcome (parsed from the
+    #: ``X-Mesh-Routing-*`` response headers). Use this to pipe into your own
+    #: logging framework; use ``debug`` for ready-made readable lines instead.
+    logger: Optional[ResilienceLogger] = field(default=None, repr=False)
+    #: Print readable resilience lines to stderr (``[meshapi] retrying POST …``).
+    #: Gateway-routing lines are printed only when interesting (a retry or a
+    #: provider fallback actually happened). Independent of ``logger``.
+    debug: bool = False
 
     def __post_init__(self) -> None:
         self.base_url = self.base_url.rstrip("/")
@@ -260,18 +294,24 @@ async def _aiter_json_sse(
 # ---------------------------------------------------------------------------
 
 
-def _compute_delay_s(attempt: int, retry_after: Optional[int]) -> float:
-    """Exponential backoff with jitter, capped at _BACKOFF_MAX_MS."""
+def _compute_delay_s(
+    attempt: int, retry_after: Optional[int], policy: ResolvedRetryPolicy
+) -> float:
+    """Exponential backoff with jitter, capped at ``policy.backoff_max_ms``."""
     if retry_after is not None:
         base = retry_after * 1000
     else:
-        base = _BACKOFF_BASE_MS * (2**attempt)
-    capped = min(base, _BACKOFF_MAX_MS)
+        base = policy.backoff_base_ms * (2**attempt)
+    capped = min(base, policy.backoff_max_ms)
     jittered = capped * (0.8 + random.random() * 0.4)  # ±20%
     return jittered / 1000.0
 
 
-def _retry_after_from_response(response: httpx.Response) -> Optional[int]:
+def _retry_after_from_response(
+    response: httpx.Response, policy: ResolvedRetryPolicy
+) -> Optional[int]:
+    if not policy.respect_retry_after:
+        return None
     val = response.headers.get("retry-after")
     if val is not None:
         try:
@@ -279,6 +319,60 @@ def _retry_after_from_response(response: httpx.Response) -> Optional[int]:
         except (ValueError, TypeError):
             pass
     return None
+
+
+def _is_retryable_network_error(exc: Exception) -> bool:
+    """Pre-response failures (DNS, connection refused/reset) are retryable
+    when opted in. Timeouts are never retried — the request may already be
+    executing server-side and POST bodies are not idempotent. Cancellation
+    (``asyncio.CancelledError``/``KeyboardInterrupt``) is a ``BaseException``
+    and never reaches this check.
+    """
+    if isinstance(exc, httpx.TimeoutException):
+        return False
+    return isinstance(exc, httpx.RequestError)
+
+
+def _gateway_routing_event_from_response(
+    path: str, response: httpx.Response
+) -> Optional[GatewayRoutingEvent]:
+    """Parse the gateway's own routing outcome (server-side retry / provider
+    fallback, FT-244) from the final response. Header-absence means the key
+    has no active routing policy — nothing is emitted.
+    """
+    attempts = response.headers.get(_ROUTING_ATTEMPTS_HEADER)
+    if attempts is None:
+        return None
+    try:
+        attempts_n = int(attempts)
+    except ValueError:
+        attempts_n = 0
+    return GatewayRoutingEvent(
+        path=path,
+        attempts=attempts_n or 1,
+        fallback=response.headers.get(_ROUTING_FALLBACK_HEADER) == "true",
+        served_provider=response.headers.get(_SERVED_PROVIDER_HEADER),
+        request_id=response.headers.get(_REQUEST_ID_HEADER),
+    )
+
+
+def _emit(config: MeshAPIConfig, event: ResilienceEvent) -> None:
+    """Publish a resilience event to ``config.logger`` and, with
+    ``config.debug``, as a readable ``[meshapi]`` stderr line. Gateway-routing
+    lines are only printed when a server-side retry/fallback actually
+    happened; the logger receives every event.
+    """
+    if config.logger is not None:
+        config.logger(event)
+    if not config.debug:
+        return
+    if (
+        isinstance(event, GatewayRoutingEvent)
+        and event.attempts <= 1
+        and not event.fallback
+    ):
+        return
+    print(f"[meshapi] {format_resilience_event(event)}", file=sys.stderr)
 
 
 def _raise_for_status(response: httpx.Response) -> None:
@@ -295,10 +389,22 @@ def _raise_for_status(response: httpx.Response) -> None:
 class SyncHttpClient:
     def __init__(self, config: MeshAPIConfig) -> None:
         self._config = config
+        self._retry = resolve_retry_policy(config.retry, config.max_retries)
+        #: Chat's client-side model-fallback chain (read by CompletionsResource).
+        self.fallback = config.fallback
         self._client = config.httpx_client or httpx.Client(
             base_url=config.base_url,
             timeout=config.timeout,
         )
+
+    def emit(self, event: ResilienceEvent) -> None:
+        """Publish a resilience event to the configured ``logger`` and, with
+        ``debug=True``, as a readable stderr line. Gateway-routing lines are
+        only printed when a server-side retry/fallback actually happened; the
+        logger receives every event. Also used by CompletionsResource for
+        fallback hops.
+        """
+        _emit(self._config, event)
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -324,26 +430,67 @@ class SyncHttpClient:
         if json_body is not None:
             kwargs["json"] = json_body
 
-        for attempt in range(self._config.max_retries + 1):
-            if stream:
-                # Streaming: no retry, open the stream and return immediately
-                req = self._client.request(method, path, **kwargs)
-                _raise_for_status(req)
-                return req
+        if stream:
+            # Streaming: no retry, open the stream and return immediately
+            req = self._client.request(method, path, **kwargs)
+            _raise_for_status(req)
+            return req
 
-            response = self._client.request(method, path, **kwargs)
-            if (
-                response.status_code in _RETRY_STATUS_CODES
-                and attempt < self._config.max_retries
-            ):
-                delay = _compute_delay_s(attempt, _retry_after_from_response(response))
-                time.sleep(delay)
+        retry = self._retry
+        attempt = 0
+        while True:
+            try:
+                response = self._client.request(method, path, **kwargs)
+            except httpx.RequestError as exc:
+                # Timeouts / cancellation always propagate. Other pre-response
+                # failures (DNS, connection refused/reset) retry only when
+                # opted in — they are ambiguous for non-idempotent POSTs.
+                if (
+                    not retry.retry_on_network_error
+                    or not _is_retryable_network_error(exc)
+                    or attempt >= retry.max_retries
+                ):
+                    raise
+                delay_s = _compute_delay_s(attempt, None, retry)
+                self.emit(
+                    RetryEvent(
+                        method=method,
+                        path=path,
+                        attempt=attempt + 1,
+                        max_retries=retry.max_retries,
+                        delay_ms=delay_s * 1000,
+                        reason="network-error",
+                    )
+                )
+                time.sleep(delay_s)
+                attempt += 1
                 continue
+
+            if response.status_code in retry.retry_on_status and attempt < retry.max_retries:
+                delay_s = _compute_delay_s(
+                    attempt, _retry_after_from_response(response, retry), retry
+                )
+                self.emit(
+                    RetryEvent(
+                        method=method,
+                        path=path,
+                        attempt=attempt + 1,
+                        max_retries=retry.max_retries,
+                        status=response.status_code,
+                        request_id=response.headers.get(_REQUEST_ID_HEADER),
+                        delay_ms=delay_s * 1000,
+                        reason="status",
+                    )
+                )
+                time.sleep(delay_s)
+                attempt += 1
+                continue
+
+            gw_event = _gateway_routing_event_from_response(path, response)
+            if gw_event is not None:
+                self.emit(gw_event)
             _raise_for_status(response)
             return response
-
-        # Should never reach here
-        raise RuntimeError("unreachable")
 
     def get(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> Any:
         response = self._request("GET", path, params=params)
@@ -426,10 +573,22 @@ class SyncHttpClient:
 class AsyncHttpClient:
     def __init__(self, config: MeshAPIConfig) -> None:
         self._config = config
+        self._retry = resolve_retry_policy(config.retry, config.max_retries)
+        #: Chat's client-side model-fallback chain (read by AsyncCompletionsResource).
+        self.fallback = config.fallback
         self._client = config.async_httpx_client or httpx.AsyncClient(
             base_url=config.base_url,
             timeout=config.timeout,
         )
+
+    def emit(self, event: ResilienceEvent) -> None:
+        """Publish a resilience event to the configured ``logger`` and, with
+        ``debug=True``, as a readable stderr line. Gateway-routing lines are
+        only printed when a server-side retry/fallback actually happened; the
+        logger receives every event. Also used by AsyncCompletionsResource
+        for fallback hops.
+        """
+        _emit(self._config, event)
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -454,19 +613,61 @@ class AsyncHttpClient:
         if json_body is not None:
             kwargs["json"] = json_body
 
-        for attempt in range(self._config.max_retries + 1):
-            response = await self._client.request(method, path, **kwargs)
-            if (
-                response.status_code in _RETRY_STATUS_CODES
-                and attempt < self._config.max_retries
-            ):
-                delay = _compute_delay_s(attempt, _retry_after_from_response(response))
-                await asyncio.sleep(delay)
+        retry = self._retry
+        attempt = 0
+        while True:
+            try:
+                response = await self._client.request(method, path, **kwargs)
+            except httpx.RequestError as exc:
+                # Timeouts / cancellation always propagate. Other pre-response
+                # failures (DNS, connection refused/reset) retry only when
+                # opted in — they are ambiguous for non-idempotent POSTs.
+                if (
+                    not retry.retry_on_network_error
+                    or not _is_retryable_network_error(exc)
+                    or attempt >= retry.max_retries
+                ):
+                    raise
+                delay_s = _compute_delay_s(attempt, None, retry)
+                self.emit(
+                    RetryEvent(
+                        method=method,
+                        path=path,
+                        attempt=attempt + 1,
+                        max_retries=retry.max_retries,
+                        delay_ms=delay_s * 1000,
+                        reason="network-error",
+                    )
+                )
+                await asyncio.sleep(delay_s)
+                attempt += 1
                 continue
+
+            if response.status_code in retry.retry_on_status and attempt < retry.max_retries:
+                delay_s = _compute_delay_s(
+                    attempt, _retry_after_from_response(response, retry), retry
+                )
+                self.emit(
+                    RetryEvent(
+                        method=method,
+                        path=path,
+                        attempt=attempt + 1,
+                        max_retries=retry.max_retries,
+                        status=response.status_code,
+                        request_id=response.headers.get(_REQUEST_ID_HEADER),
+                        delay_ms=delay_s * 1000,
+                        reason="status",
+                    )
+                )
+                await asyncio.sleep(delay_s)
+                attempt += 1
+                continue
+
+            gw_event = _gateway_routing_event_from_response(path, response)
+            if gw_event is not None:
+                self.emit(gw_event)
             _raise_for_status(response)
             return response
-
-        raise RuntimeError("unreachable")
 
     async def get(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> Any:
         response = await self._request("GET", path, params=params)

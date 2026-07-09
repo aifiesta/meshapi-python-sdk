@@ -109,6 +109,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.livetest
 .venv
 env/
 venv/

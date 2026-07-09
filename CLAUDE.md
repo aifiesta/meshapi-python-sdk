@@ -163,6 +163,7 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_video.py` | Video list, generate → retrieve |
 | `test_compare.py` | Non-streaming compare, streaming compare |
 | `test_moderations.py` | Moderation classify: text and multimodal input |
+| `test_resilience.py` | Retry/fallback/logging: logger events, per-call fallback_models stripping, unreachable-gateway chain |
 
 ---
 
