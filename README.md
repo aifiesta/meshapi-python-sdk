@@ -185,6 +185,27 @@ country = client.chat.completions.parse(params, Country, max_retries=3)
 `parse()` is non-streaming. Use `create()` when you need the raw string content
 plus `usage`/cost metadata. `AsyncMeshAPI` exposes the same `await client.chat.completions.parse(...)`.
 
+### When the model doesn't support structured output
+
+If parsing fails after any retries, `parse()` raises `StructuredOutputError`
+(a `MeshAPIError` subclass; the underlying `pydantic.ValidationError` /
+`json.JSONDecodeError` is on `__cause__`). When the model returned plain text
+instead of JSON — usually because it doesn't support `response_format` — the
+message points you at the model's structured-output support:
+
+```python
+from meshapi import StructuredOutputError
+
+try:
+    country = client.chat.completions.parse(params, Country)
+except StructuredOutputError as e:
+    print(e)  # "... the model returned text that is not valid JSON ... Check
+              #  the model's support on the Models page (https://app.meshapi.ai/...)"
+```
+
+Check a model's `supports_structured_output` flag via `GET /v1/models`, or on the
+Models page in your dashboard.
+
 ## Responses API (reasoning models)
 
 ```python

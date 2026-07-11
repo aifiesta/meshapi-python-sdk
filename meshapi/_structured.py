@@ -72,6 +72,49 @@ def parse_content(response_format: Any, content: str) -> Any:
     return json.loads(content)
 
 
+_MODELS_URL = "https://app.meshapi.ai/org/<your-org-id>/models"
+
+
+def _is_not_json(cause: BaseException) -> bool:
+    """True when the failure is 'the response wasn't JSON at all' (prose) rather
+    than 'valid JSON that didn't match the schema'.
+
+    ``json.loads`` raises ``JSONDecodeError`` on the raw-dict path; pydantic's
+    ``*_validate_json`` raises a ``ValidationError`` whose first error is typed
+    ``json_invalid`` when the input isn't parseable JSON.
+    """
+    if isinstance(cause, json.JSONDecodeError):
+        return True
+    errors = getattr(cause, "errors", None)
+    if callable(errors):
+        try:
+            return any(e.get("type") == "json_invalid" for e in cause.errors())  # type: ignore[attr-defined]
+        except Exception:
+            return False
+    return False
+
+
+def structured_output_error_message(model: Any, cause: BaseException) -> str:
+    """Build the message for ``StructuredOutputError`` — points the caller at the
+    model's structured-output support when the model returned non-JSON prose."""
+    where = f" from model '{model}'" if model else ""
+    if _is_not_json(cause):
+        return (
+            f"Could not parse a structured response{where}: the model returned "
+            "text that is not valid JSON, which usually means it does not support "
+            "structured outputs (response_format). Check the model's support on "
+            f"the Models page ({_MODELS_URL}) or the `supports_structured_output` "
+            "flag from GET /v1/models, and prefer a model with first-class support "
+            f"(e.g. openai/* or google/gemini-*). Original error: {cause}"
+        )
+    return (
+        f"Could not parse a structured response{where}: the response was valid "
+        "JSON but did not match the requested schema. Retry with a higher "
+        "`max_retries`, or confirm the model supports structured outputs on the "
+        f"Models page ({_MODELS_URL}). Original error: {cause}"
+    )
+
+
 def correction_prompt(exc: Exception) -> str:
     return (
         "Your previous response failed schema validation: "

@@ -6,12 +6,14 @@ from typing import Any, AsyncIterator, Dict, Iterator, Type, TypeVar, overload
 
 from pydantic import BaseModel, ValidationError
 
+from .._errors import StructuredOutputError
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._structured import (
     build_response_format,
     correction_prompt,
     extract_content,
     parse_content,
+    structured_output_error_message,
 )
 from .._types import ChatCompletionChunk, ChatCompletionParams, ChatCompletionResponse
 
@@ -72,7 +74,9 @@ class CompletionsResource:
                 return parse_content(response_format, content)
             except (ValidationError, ValueError) as exc:  # ValueError covers JSONDecodeError
                 if attempt >= max_retries:
-                    raise
+                    raise StructuredOutputError(
+                        structured_output_error_message(params.model, exc)
+                    ) from exc
                 attempt += 1
                 body["messages"] = list(body["messages"]) + [
                     {"role": "assistant", "content": content},
@@ -131,7 +135,9 @@ class AsyncCompletionsResource:
                 return parse_content(response_format, content)
             except (ValidationError, ValueError) as exc:
                 if attempt >= max_retries:
-                    raise
+                    raise StructuredOutputError(
+                        structured_output_error_message(params.model, exc)
+                    ) from exc
                 attempt += 1
                 body["messages"] = list(body["messages"]) + [
                     {"role": "assistant", "content": content},

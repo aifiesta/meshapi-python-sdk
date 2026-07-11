@@ -119,3 +119,23 @@ class MeshAPIError(Exception):
             error_code="stream_interrupted",
             request_id="",
         )
+
+
+class StructuredOutputError(MeshAPIError):
+    """Raised by ``chat.completions.parse()`` when the model's response cannot be
+    parsed into the requested schema.
+
+    The most common cause is that the model does not support structured outputs
+    (``response_format``): the gateway forwards the field, the provider ignores
+    it, and the model returns plain text instead of JSON. The underlying
+    ``pydantic.ValidationError`` / ``json.JSONDecodeError`` is preserved on
+    ``__cause__``. A client-side error, so ``status`` is ``0``.
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(
+            message,
+            status=0,
+            error_code="structured_output_parse_error",
+            request_id="",
+        )

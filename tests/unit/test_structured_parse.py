@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 from typing_extensions import TypedDict  # 3.9-safe TypedDict for tests
 
 from meshapi import _structured as S
+from meshapi import StructuredOutputError
 from meshapi._types import (
     ChatCompletionChoice,
     ChatCompletionMessage,
@@ -164,10 +165,35 @@ def test_parse_raw_dict_returns_dict():
 
 def test_parse_default_no_retry_raises_on_bad():
     http = MagicMock()
-    http.post.return_value = _payload(json.dumps({"name": "A"}))  # missing fields
-    with pytest.raises(ValidationError):
+    http.post.return_value = _payload(json.dumps({"name": "A"}))  # valid JSON, wrong shape
+    with pytest.raises(StructuredOutputError) as ei:
         CompletionsResource(http).parse(_params(), Person)
     assert http.post.call_count == 1
+    # underlying error preserved; shape-mismatch wording (not the "not JSON" hint)
+    assert isinstance(ei.value.__cause__, ValidationError)
+    assert "did not match the requested schema" in str(ei.value)
+
+
+def test_parse_non_json_hints_model_support():
+    """Model returns prose (doesn't support structured output) -> the error
+    tells the caller to check model support + links the Models page."""
+    http = MagicMock()
+    http.post.return_value = _payload("Sure! The capital of France is Paris.")
+    with pytest.raises(StructuredOutputError) as ei:
+        CompletionsResource(http).parse(_params(), Person)
+    msg = str(ei.value)
+    assert "does not support structured outputs" in msg
+    assert "app.meshapi.ai" in msg and "/models" in msg
+    assert ei.value.error_code == "structured_output_parse_error"
+
+
+def test_parse_raw_dict_non_json_hints_model_support():
+    http = MagicMock()
+    http.post.return_value = _payload("not json at all")
+    with pytest.raises(StructuredOutputError) as ei:
+        CompletionsResource(http).parse(_params(), {"type": "object"})
+    assert "does not support structured outputs" in str(ei.value)
+    assert isinstance(ei.value.__cause__, json.JSONDecodeError)
 
 
 def test_parse_retry_recovers_and_appends_correction():
@@ -187,9 +213,10 @@ def test_parse_retry_recovers_and_appends_correction():
 def test_parse_retry_exhausted_raises():
     http = MagicMock()
     http.post.side_effect = [_payload(json.dumps({"name": "A"}))] * 3
-    with pytest.raises(ValidationError):
+    with pytest.raises(StructuredOutputError) as ei:
         CompletionsResource(http).parse(_params(), Person, max_retries=1)
     assert http.post.call_count == 2  # initial + 1 retry
+    assert isinstance(ei.value.__cause__, ValidationError)
 
 
 # ---------------------------------------------------------------------------

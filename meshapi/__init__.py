@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ._errors import MeshAPIError
+from ._errors import MeshAPIError, StructuredOutputError
 from ._http import AsyncHttpClient, MeshAPIConfig, SyncHttpClient
 from ._types import (
     ApiErrorBody,
@@ -147,6 +147,7 @@ __all__ = [
     "AsyncMeshAPI",
     "MeshAPIConfig",
     "MeshAPIError",
+    "StructuredOutputError",
     # types
     "ChatRole",
     "ChatMessage",
