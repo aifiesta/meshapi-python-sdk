@@ -51,7 +51,16 @@ def build_response_format(response_format: Any) -> Dict[str, Any]:
     if kind == "model":
         schema = response_format.model_json_schema()
     else:  # adapter
-        schema = TypeAdapter(response_format).json_schema()
+        try:
+            schema = TypeAdapter(response_format).json_schema()
+        except Exception as exc:  # noqa: BLE001 — re-raised with an actionable hint
+            raise TypeError(
+                "Could not build a JSON schema from response_format="
+                f"{response_format!r}. If this is a TypedDict on Python < 3.12, "
+                "import it from `typing_extensions` instead of `typing` — pydantic "
+                "cannot introspect stdlib `typing.TypedDict` before 3.12. "
+                f"Original error: {exc}"
+            ) from exc
     return {
         "type": "json_schema",
         "json_schema": {"name": _schema_name(response_format), "schema": schema},
@@ -118,7 +127,7 @@ def structured_output_error_message(model: Any, cause: BaseException) -> str:
 def correction_prompt(exc: Exception) -> str:
     return (
         "Your previous response failed schema validation: "
-        f"{exc}. Return ONLY a JSON object that matches the requested schema, "
+        f"{exc}. Return ONLY valid JSON that matches the requested schema, "
         "with no prose, markdown, or code fences."
     )
 

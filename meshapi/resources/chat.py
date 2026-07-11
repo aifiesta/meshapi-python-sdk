@@ -46,7 +46,7 @@ class CompletionsResource:
               *, max_retries: int = 0) -> _T: ...
     @overload
     def parse(self, params: ChatCompletionParams, response_format: Dict[str, Any],
-              *, max_retries: int = 0) -> Dict[str, Any]: ...
+              *, max_retries: int = 0) -> Any: ...
     @overload
     def parse(self, params: ChatCompletionParams, response_format: Any,
               *, max_retries: int = 0) -> Any: ...
@@ -56,7 +56,12 @@ class CompletionsResource:
 
         ``response_format`` may be a Pydantic model class (-> typed instance),
         a TypedDict/dataclass (-> validated object), or a raw JSON-schema dict
-        (-> parsed ``dict``, unvalidated). Non-streaming only.
+        (-> the parsed JSON value: ``dict``, ``list``, or scalar; unvalidated).
+        Non-streaming only.
+
+        On Python < 3.12, use ``from typing_extensions import TypedDict`` (not
+        ``typing.TypedDict``): pydantic cannot build a schema from the stdlib
+        version before 3.12.
 
         With ``max_retries > 0``, a response that fails validation is fed back to
         the model with the validation error appended, up to ``max_retries`` times.
@@ -116,7 +121,7 @@ class AsyncCompletionsResource:
                     *, max_retries: int = 0) -> _T: ...
     @overload
     async def parse(self, params: ChatCompletionParams, response_format: Dict[str, Any],
-                    *, max_retries: int = 0) -> Dict[str, Any]: ...
+                    *, max_retries: int = 0) -> Any: ...
     @overload
     async def parse(self, params: ChatCompletionParams, response_format: Any,
                     *, max_retries: int = 0) -> Any: ...

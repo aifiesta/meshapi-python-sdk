@@ -94,6 +94,17 @@ def test_build_response_format_raw_full_wrapper_passes_through():
     assert S.build_response_format(wrapper) == wrapper
 
 
+def test_build_response_format_unschemable_adapter_hints_typing_extensions():
+    """A type pydantic can't schema-build (e.g. stdlib TypedDict on <3.12, or an
+    arbitrary class) raises a clear TypeError pointing at typing_extensions."""
+    class NotSchemable:  # arbitrary class -> adapter path, no pydantic schema
+        pass
+
+    with pytest.raises(TypeError) as ei:
+        S.build_response_format(NotSchemable)
+    assert "typing_extensions" in str(ei.value)
+
+
 # ---------------------------------------------------------------------------
 # parse_content
 # ---------------------------------------------------------------------------
@@ -113,6 +124,12 @@ def test_parse_content_raw_returns_dict_unvalidated():
     out = S.parse_content({"type": "object"}, json.dumps({"anything": 1}))
     assert out == {"anything": 1}
 
+def test_parse_content_raw_returns_non_dict_json():
+    """Raw path returns whatever JSON the model emitted — list or scalar, not
+    only a dict (honest typing: the raw overload returns Any)."""
+    assert S.parse_content({"type": "array"}, json.dumps([1, 2, 3])) == [1, 2, 3]
+    assert S.parse_content({"type": "integer"}, json.dumps(7)) == 7
+
 def test_parse_content_model_bad_raises_validation_error():
     with pytest.raises(ValidationError):
         S.parse_content(Person, json.dumps({"name": "A"}))  # missing age/address
@@ -131,6 +148,19 @@ def test_extract_content_returns_string():
 
 def test_extract_content_none_returns_empty_string():
     assert S.extract_content(_resp(None)) == ""
+
+
+# ---------------------------------------------------------------------------
+# correction_prompt
+# ---------------------------------------------------------------------------
+
+def test_correction_prompt_asks_for_valid_json_not_object():
+    """A raw schema may be a non-object (array/scalar); the retry prompt must not
+    demand a JSON *object*, only valid JSON."""
+    prompt = S.correction_prompt(ValueError("boom"))
+    assert "valid JSON" in prompt
+    assert "JSON object" not in prompt
+    assert "boom" in prompt
 
 
 # ---------------------------------------------------------------------------

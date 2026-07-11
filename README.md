@@ -170,7 +170,12 @@ print(country.capital, country.population_millions)  # typed, with IDE autocompl
 |---|---|
 | Pydantic `BaseModel` subclass | an instance of that model |
 | `TypedDict` / dataclass | the validated object |
-| raw JSON-schema `dict` | a `dict` (`json.loads`, unvalidated) |
+| raw JSON-schema `dict` | the parsed JSON value — a `dict`, `list`, or scalar (`json.loads`, unvalidated) |
+
+> **Python < 3.12 and `TypedDict`:** import it from `typing_extensions`
+> (`from typing_extensions import TypedDict`), not `typing`. pydantic cannot
+> build a schema from stdlib `typing.TypedDict` before 3.12, so `parse()` will
+> raise a `TypeError` pointing you here.
 
 ### Auto-retry on validation failure (opt-in)
 
