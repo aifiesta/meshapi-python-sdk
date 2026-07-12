@@ -138,6 +138,79 @@ params = ChatCompletionParams(
 )
 ```
 
+## Structured outputs
+
+Constrain the model to a JSON schema and get a parsed, typed result back.
+Pass a Pydantic model, a `TypedDict`/dataclass, or a raw JSON-schema `dict`.
+
+```python
+from pydantic import BaseModel
+from meshapi import MeshAPI, ChatCompletionParams, ChatMessage
+
+class Country(BaseModel):
+    country: str
+    capital: str
+    population_millions: float
+
+client = MeshAPI(base_url="https://api.meshapi.ai", token="rsk_...")
+
+country = client.chat.completions.parse(
+    ChatCompletionParams(
+        model="openai/gpt-4o-mini",
+        messages=[ChatMessage(role="user", content="Give me structured facts about France.")],
+    ),
+    response_format=Country,
+)
+print(country.capital, country.population_millions)  # typed, with IDE autocomplete
+```
+
+`parse()` returns the parsed object directly:
+
+| `response_format` | Returns |
+|---|---|
+| Pydantic `BaseModel` subclass | an instance of that model |
+| `TypedDict` / dataclass | the validated object |
+| raw JSON-schema `dict` | the parsed JSON value — a `dict`, `list`, or scalar (`json.loads`, unvalidated) |
+
+> **Python < 3.12 and `TypedDict`:** import it from `typing_extensions`
+> (`from typing_extensions import TypedDict`), not `typing`. pydantic cannot
+> build a schema from stdlib `typing.TypedDict` before 3.12, so `parse()` will
+> raise a `TypeError` pointing you here.
+
+### Auto-retry on validation failure (opt-in)
+
+Some providers only best-effort the schema. Set `max_retries` to feed a failed
+response back to the model with the validation error appended. Each retry is a
+billed call; the default is `0` (no retry).
+
+```python
+country = client.chat.completions.parse(params, Country, max_retries=3)
+```
+
+`parse()` is non-streaming. Use `create()` when you need the raw string content
+plus `usage`/cost metadata. `AsyncMeshAPI` exposes the same `await client.chat.completions.parse(...)`.
+
+### When the model doesn't support structured output
+
+If parsing fails after any retries, `parse()` raises `StructuredOutputError`
+(a `MeshAPIError` subclass; the underlying `pydantic.ValidationError` /
+`json.JSONDecodeError` is on `__cause__`). When the model returned plain text
+instead of JSON — usually because it doesn't support `response_format` — the
+message points you at the model's structured-output support:
+
+```python
+from meshapi import StructuredOutputError
+
+try:
+    country = client.chat.completions.parse(params, Country)
+except StructuredOutputError as e:
+    print(e)  # "... the model returned text that is not valid JSON ... Check
+              #  the model's support on the Models page (https://app.meshapi.ai/...)"
+```
+
+Check a model's `supports_structured_output` flag via `GET /v1/models`, or on the
+Models page in your dashboard.
+
 ## Responses API (reasoning models)
 
 ```python
