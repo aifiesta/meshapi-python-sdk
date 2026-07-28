@@ -80,7 +80,11 @@ jobs:
         working-directory: livetests
         run: |
           if [ "${{ steps.mode.outputs.value }}" = "smoke" ]; then
-            pytest test_models.py test_chat.py test_inference_resources.py test_stream.py test_errors.py -v --tb=short
+            pytest test_models.py test_chat.py test_stream.py test_errors.py \
+              "test_inference_resources.py::test_embeddings_create" \
+              "test_inference_resources.py::test_responses_create" \
+              "test_inference_resources.py::test_responses_stream" \
+              -v --tb=short
           else
             pytest . -v --tb=short
           fi
