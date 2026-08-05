@@ -385,7 +385,7 @@ def test_models_list_type_param():
     mock_http.get.return_value = []
     resource = ModelsResource(mock_http)
     resource.list(type="image")
-    mock_http.get.assert_called_once_with("/v1/models", params={"type": "image"})
+    mock_http.get.assert_called_once_with("/v1/models", params={"type": "image"}, request_id=None)
 
 
 def test_models_list_provider_param():
@@ -396,7 +396,7 @@ def test_models_list_provider_param():
     mock_http.get.return_value = []
     resource = ModelsResource(mock_http)
     resource.list(provider="openai")
-    mock_http.get.assert_called_once_with("/v1/models", params={"provider": "openai"})
+    mock_http.get.assert_called_once_with("/v1/models", params={"provider": "openai"}, request_id=None)
 
 
 def test_models_list_combined_params():
@@ -410,6 +410,7 @@ def test_models_list_combined_params():
     mock_http.get.assert_called_once_with(
         "/v1/models",
         params={"free": "true", "type": "text", "provider": "anthropic"},
+        request_id=None,
     )
 
 
@@ -426,7 +427,7 @@ def test_batches_get_quotes_batch_id():
     mock_http.get.return_value = {"id": "batch/123", "object": "batch"}
     resource = BatchesResource(mock_http)
     resource.get("batch/123")
-    mock_http.get.assert_called_once_with("/v1/batches/batch%2F123")
+    mock_http.get.assert_called_once_with("/v1/batches/batch%2F123", request_id=None)
 
 
 def test_batches_cancel_quotes_batch_id():
@@ -437,7 +438,7 @@ def test_batches_cancel_quotes_batch_id():
     mock_http.post.return_value = {"id": "batch/123", "object": "batch", "status": "cancelling"}
     resource = BatchesResource(mock_http)
     resource.cancel("batch/123")
-    mock_http.post.assert_called_once_with("/v1/batches/batch%2F123/cancel", {})
+    mock_http.post.assert_called_once_with("/v1/batches/batch%2F123/cancel", {}, request_id=None)
 
 
 # ---------------------------------------------------------------------------

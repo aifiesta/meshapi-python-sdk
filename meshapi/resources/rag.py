@@ -22,29 +22,51 @@ class RagResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def init_upload(self, params: InitUploadRequest) -> InitUploadResponse:
-        data = self._http.post("/v1/files", params.model_dump(exclude_none=True))
+    def init_upload(
+        self, params: InitUploadRequest, *, request_id: Optional[str] = None
+    ) -> InitUploadResponse:
+        data = self._http.post(
+            "/v1/files", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return InitUploadResponse.model_validate(data)
 
-    def list(self, limit: Optional[int] = None, offset: Optional[int] = None) -> RagFileListResponse:
+    def list(
+        self,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+        *,
+        request_id: Optional[str] = None,
+    ) -> RagFileListResponse:
         query: dict = {}
         if limit is not None:
             query["limit"] = limit
         if offset is not None:
             query["offset"] = offset
-        data = self._http.get("/v1/files", params=query if query else None)
+        data = self._http.get(
+            "/v1/files", params=query if query else None, request_id=request_id
+        )
         return RagFileListResponse.model_validate(data)
 
-    def get(self, file_id: str) -> RagFileStatus:
-        data = self._http.get(f"/v1/files/{quote(file_id, safe='')}")
+    def get(self, file_id: str, *, request_id: Optional[str] = None) -> RagFileStatus:
+        data = self._http.get(
+            f"/v1/files/{quote(file_id, safe='')}", request_id=request_id
+        )
         return RagFileStatus.model_validate(data)
 
-    def embed(self, params: BulkEmbedRequest) -> BulkEmbedResponse:
-        data = self._http.post("/v1/files/embed", params.model_dump(exclude_none=True))
+    def embed(
+        self, params: BulkEmbedRequest, *, request_id: Optional[str] = None
+    ) -> BulkEmbedResponse:
+        data = self._http.post(
+            "/v1/files/embed", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return BulkEmbedResponse.model_validate(data)
 
-    def search(self, params: SearchRequest) -> SearchResponse:
-        data = self._http.post("/v1/files/search", params.model_dump(exclude_none=True))
+    def search(
+        self, params: SearchRequest, *, request_id: Optional[str] = None
+    ) -> SearchResponse:
+        data = self._http.post(
+            "/v1/files/search", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return SearchResponse.model_validate(data)
 
     def upload_file(
@@ -55,11 +77,13 @@ class RagResource:
         content: bytes,
         embed: Optional[bool] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        request_id: Optional[str] = None,
     ) -> InitUploadResponse:
         """Convenience wrapper: calls init_upload then PUTs the file content to
         the signed URL in one step. Returns the InitUploadResponse with file_id."""
         upload = self.init_upload(
-            InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
+            InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata),
+            request_id=request_id,
         )
         # Use the configured httpx client so proxy/transport/TLS settings are honoured.
         # Signed URLs are absolute — httpx accepts them even when base_url is set.
@@ -78,29 +102,51 @@ class AsyncRagResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def init_upload(self, params: InitUploadRequest) -> InitUploadResponse:
-        data = await self._http.post("/v1/files", params.model_dump(exclude_none=True))
+    async def init_upload(
+        self, params: InitUploadRequest, *, request_id: Optional[str] = None
+    ) -> InitUploadResponse:
+        data = await self._http.post(
+            "/v1/files", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return InitUploadResponse.model_validate(data)
 
-    async def list(self, limit: Optional[int] = None, offset: Optional[int] = None) -> RagFileListResponse:
+    async def list(
+        self,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+        *,
+        request_id: Optional[str] = None,
+    ) -> RagFileListResponse:
         query: dict = {}
         if limit is not None:
             query["limit"] = limit
         if offset is not None:
             query["offset"] = offset
-        data = await self._http.get("/v1/files", params=query if query else None)
+        data = await self._http.get(
+            "/v1/files", params=query if query else None, request_id=request_id
+        )
         return RagFileListResponse.model_validate(data)
 
-    async def get(self, file_id: str) -> RagFileStatus:
-        data = await self._http.get(f"/v1/files/{quote(file_id, safe='')}")
+    async def get(self, file_id: str, *, request_id: Optional[str] = None) -> RagFileStatus:
+        data = await self._http.get(
+            f"/v1/files/{quote(file_id, safe='')}", request_id=request_id
+        )
         return RagFileStatus.model_validate(data)
 
-    async def embed(self, params: BulkEmbedRequest) -> BulkEmbedResponse:
-        data = await self._http.post("/v1/files/embed", params.model_dump(exclude_none=True))
+    async def embed(
+        self, params: BulkEmbedRequest, *, request_id: Optional[str] = None
+    ) -> BulkEmbedResponse:
+        data = await self._http.post(
+            "/v1/files/embed", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return BulkEmbedResponse.model_validate(data)
 
-    async def search(self, params: SearchRequest) -> SearchResponse:
-        data = await self._http.post("/v1/files/search", params.model_dump(exclude_none=True))
+    async def search(
+        self, params: SearchRequest, *, request_id: Optional[str] = None
+    ) -> SearchResponse:
+        data = await self._http.post(
+            "/v1/files/search", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return SearchResponse.model_validate(data)
 
     async def upload_file(
@@ -111,11 +157,13 @@ class AsyncRagResource:
         content: bytes,
         embed: Optional[bool] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        request_id: Optional[str] = None,
     ) -> InitUploadResponse:
         """Convenience wrapper: calls init_upload then PUTs the file content to
         the signed URL in one step. Returns the InitUploadResponse with file_id."""
         upload = await self.init_upload(
-            InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata)
+            InitUploadRequest(file_name=file_name, mime_type=mime_type, embed=embed, metadata=metadata),
+            request_id=request_id,
         )
         # Use the configured async httpx client so proxy/transport/TLS settings are honoured.
         # Signed URLs are absolute — httpx accepts them even when base_url is set.

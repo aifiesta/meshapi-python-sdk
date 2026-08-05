@@ -4,11 +4,34 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 # ---------------------------------------------------------------------------
 # Shared
 # ---------------------------------------------------------------------------
+
+
+class MeshModel(BaseModel):
+    """Base class for top-level response models returned by resource methods.
+
+    Exposes the server-assigned request id (the ``X-Request-Id`` response
+    header, format ``req_<ULID>``) as ``model._request_id`` — mirroring
+    openai-python. It is a private attribute: ``None`` when never populated,
+    and never included in ``model_dump()`` / ``model_dump_json()``.
+    """
+
+    _request_id: Optional[str] = PrivateAttr(default=None)
+
+    @classmethod
+    def model_validate(cls, obj: Any, **kwargs: Any) -> "MeshModel":
+        instance = super().model_validate(obj, **kwargs)
+        # The HTTP layer wraps parsed JSON payloads in dict/list subclasses
+        # that carry the response's X-Request-Id header (see _http.py).
+        server_request_id = getattr(obj, "meshapi_request_id", None)
+        if server_request_id is not None:
+            instance._request_id = server_request_id
+        return instance
+
 
 ChatRole = Literal["system", "user", "assistant", "tool"]
 
@@ -218,7 +241,7 @@ class ChatCompletionChoice(BaseModel):
     logprobs: Optional[Any] = None
 
 
-class ChatCompletionResponse(BaseModel):
+class ChatCompletionResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     object: str
@@ -244,7 +267,7 @@ class ChatCompletionChunkChoice(BaseModel):
     finish_reason: Optional[str] = None
 
 
-class ChatCompletionChunk(BaseModel):
+class ChatCompletionChunk(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     object: str
@@ -300,7 +323,7 @@ class ModelPricing(BaseModel):
     discount_pct: Optional[str] = None
 
 
-class ModelInfo(BaseModel):
+class ModelInfo(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
@@ -382,7 +405,7 @@ class UpdateTemplateParams(BaseModel):
     variables: Optional[List[str]] = None
 
 
-class TemplateSummary(BaseModel):
+class TemplateSummary(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     name: str
@@ -458,7 +481,7 @@ class EmbeddingsUsage(BaseModel):
     fallback_triggered: Optional[bool] = None
 
 
-class EmbeddingsResponse(BaseModel):
+class EmbeddingsResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     object: str
     data: List[EmbeddingItem]
@@ -537,7 +560,7 @@ class ResponsesUsage(BaseModel):
     classifier_tokens: Optional[int] = None
 
 
-class ResponsesResponse(BaseModel):
+class ResponsesResponse(MeshModel):
     model_config = ConfigDict(extra="allow")
     id: Optional[str] = None
     object: Optional[str] = None
@@ -547,7 +570,7 @@ class ResponsesResponse(BaseModel):
     status: Optional[str] = None
 
 
-class ResponsesStreamEvent(BaseModel):
+class ResponsesStreamEvent(MeshModel):
     model_config = ConfigDict(extra="allow")
     type: Optional[str] = None
     response: Optional[Dict[str, Any]] = None
@@ -602,7 +625,7 @@ class ModelCompareResult(BaseModel):
     request_id: str
 
 
-class CompareResponse(BaseModel):
+class CompareResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     comparison_id: str
     object: str
@@ -618,7 +641,7 @@ class CompareResponse(BaseModel):
     skip_comparison: bool = False
 
 
-class CompareStreamEvent(BaseModel):
+class CompareStreamEvent(MeshModel):
     model_config = ConfigDict(extra="allow")
     event: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
@@ -660,7 +683,7 @@ class CreateBatchParams(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-class BatchObject(BaseModel):
+class BatchObject(MeshModel):
     model_config = ConfigDict(extra="allow")
     id: str
     object: Optional[str] = None
@@ -680,7 +703,7 @@ class BatchObject(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-class BatchListResponse(BaseModel):
+class BatchListResponse(MeshModel):
     model_config = ConfigDict(extra="allow")
     object: str
     data: List[BatchObject]
@@ -760,7 +783,7 @@ class ImageUsage(BaseModel):
     output_tokens_details: Optional[Dict[str, Any]] = None
 
 
-class ImageGenerationResponse(BaseModel):
+class ImageGenerationResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     created: int
     data: List[ImageItem]
@@ -771,7 +794,7 @@ class ImageGenerationResponse(BaseModel):
     usage: Optional[ImageUsage] = None
 
 
-class ImageGenerationChunk(BaseModel):
+class ImageGenerationChunk(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: Optional[str] = None
     object: Optional[str] = "image.chunk"
@@ -820,7 +843,7 @@ class VideoGenerationParams(BaseModel):
     priority: Optional[int] = None
 
 
-class CreateVideoGenerationResponse(BaseModel):
+class CreateVideoGenerationResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: str
 
@@ -843,7 +866,7 @@ class VideoTaskUsage(BaseModel):
     total_tokens: int
 
 
-class VideoTaskResponse(BaseModel):
+class VideoTaskResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     id: str
     status: str
@@ -878,7 +901,7 @@ class ListVideoGenerationsParams(BaseModel):
     offset: Optional[int] = None
 
 
-class VideoTaskListResponse(BaseModel):
+class VideoTaskListResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     object: Optional[str] = None
     data: List[VideoTaskResponse]
@@ -907,14 +930,14 @@ class InitUploadRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-class InitUploadResponse(BaseModel):
+class InitUploadResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     file_id: str
     signed_url: str
     expires_at: str
 
 
-class RagFileStatus(BaseModel):
+class RagFileStatus(MeshModel):
     model_config = ConfigDict(extra="ignore")
     file_id: str
     upload_status: str
@@ -933,7 +956,7 @@ class RagFileStatus(BaseModel):
     last_error_code: Optional[str] = None
 
 
-class RagFileListResponse(BaseModel):
+class RagFileListResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     files: List[RagFileStatus]
     total: int
@@ -956,7 +979,7 @@ class BulkEmbedResult(BaseModel):
     error: Optional[str] = None
 
 
-class BulkEmbedResponse(BaseModel):
+class BulkEmbedResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     results: List[BulkEmbedResult]
 
@@ -985,7 +1008,7 @@ class SearchResult(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-class SearchResponse(BaseModel):
+class SearchResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     results: List[SearchResult]
 
@@ -1088,7 +1111,7 @@ class AudioTranslationsParams(BaseModel):
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
 
 
-class TranscriptionResponse(BaseModel):
+class TranscriptionResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     text: str
 
@@ -1106,7 +1129,7 @@ class ListVoicesParams(BaseModel):
     voice_ids: Optional[List[str]] = None
 
 
-class Voice(BaseModel):
+class Voice(MeshModel):
     model_config = ConfigDict(extra="ignore")
     voice_id: str
     name: str
@@ -1118,7 +1141,7 @@ class Voice(BaseModel):
     labels: Dict[str, Any] = Field(default_factory=dict)
 
 
-class VoicesResponse(BaseModel):
+class VoicesResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     voices: List[Voice]
     # Optional so a response that omits has_more / total_count is not rejected,
@@ -1175,7 +1198,7 @@ class ModerationResult(BaseModel):
     category_scores: Dict[str, float] = Field(default_factory=dict)
 
 
-class ModerationResponse(BaseModel):
+class ModerationResponse(MeshModel):
     model_config = ConfigDict(extra="allow")
     id: Optional[str] = None
     model: Optional[str] = None
@@ -1208,7 +1231,7 @@ class WebSearchResultItem(BaseModel):
     published_date: Optional[str] = None
 
 
-class WebSearchResponse(BaseModel):
+class WebSearchResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     query: str
     answer: Optional[str] = None
@@ -1237,7 +1260,7 @@ class AutoRouterMeta(BaseModel):
     fallback_reason: Optional[str] = None
 
 
-class RouterSelectResponse(BaseModel):
+class RouterSelectResponse(MeshModel):
     model_config = ConfigDict(extra="ignore")
     model: str
     auto_router: AutoRouterMeta
@@ -1263,7 +1286,7 @@ class ModelSearchParams(BaseModel):
     offset: Optional[int] = None
 
 
-class ModelsPage(BaseModel):
+class ModelsPage(MeshModel):
     model_config = ConfigDict(extra="allow")
     items: List[ModelInfo] = Field(default_factory=list)
     total: int
@@ -1289,7 +1312,7 @@ class ResponsesListItem(BaseModel):
     usage_synced: Optional[bool] = None
 
 
-class ResponsesListResponse(BaseModel):
+class ResponsesListResponse(MeshModel):
     model_config = ConfigDict(extra="allow")
     object: Optional[str] = None
     data: List[ResponsesListItem] = Field(default_factory=list)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Iterator, Optional
 
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import CompareParams, CompareResponse, CompareStreamEvent
@@ -12,32 +12,43 @@ class CompareResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def create(self, params: CompareParams) -> CompareResponse:
+    def create(
+        self, params: CompareParams, *, request_id: Optional[str] = None
+    ) -> CompareResponse:
         body = params.model_dump(exclude_none=True)
         if body.get("stream"):
             raise ValueError("Use stream() for streaming compare requests.")
-        data = self._http.post("/v1/chat/compare", body)
+        data = self._http.post("/v1/chat/compare", body, request_id=request_id)
         return CompareResponse.model_validate(data)
 
-    def stream(self, params: CompareParams) -> Iterator[CompareStreamEvent]:
+    def stream(
+        self, params: CompareParams, *, request_id: Optional[str] = None
+    ) -> Iterator[CompareStreamEvent]:
         body = params.model_dump(exclude_none=True)
         body["stream"] = True
-        yield from self._http.stream_json("/v1/chat/compare", body, CompareStreamEvent)
+        return self._http.stream_json(
+            "/v1/chat/compare", body, CompareStreamEvent, request_id=request_id
+        )
 
 
 class AsyncCompareResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def create(self, params: CompareParams) -> CompareResponse:
+    async def create(
+        self, params: CompareParams, *, request_id: Optional[str] = None
+    ) -> CompareResponse:
         body = params.model_dump(exclude_none=True)
         if body.get("stream"):
             raise ValueError("Use stream() for streaming compare requests.")
-        data = await self._http.post("/v1/chat/compare", body)
+        data = await self._http.post("/v1/chat/compare", body, request_id=request_id)
         return CompareResponse.model_validate(data)
 
-    async def stream(self, params: CompareParams) -> AsyncIterator[CompareStreamEvent]:
+    def stream(
+        self, params: CompareParams, *, request_id: Optional[str] = None
+    ) -> AsyncIterator[CompareStreamEvent]:
         body = params.model_dump(exclude_none=True)
         body["stream"] = True
-        async for event in self._http.stream_json("/v1/chat/compare", body, CompareStreamEvent):
-            yield event
+        return self._http.stream_json(
+            "/v1/chat/compare", body, CompareStreamEvent, request_id=request_id
+        )

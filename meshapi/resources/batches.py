@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from urllib.parse import quote
 
 from .._http import AsyncHttpClient, SyncHttpClient
@@ -12,25 +13,37 @@ class BatchesResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def create(self, params: CreateBatchParams) -> BatchObject:
-        data = self._http.post("/v1/batches", params.model_dump(exclude_none=True))
+    def create(
+        self, params: CreateBatchParams, *, request_id: Optional[str] = None
+    ) -> BatchObject:
+        data = self._http.post(
+            "/v1/batches", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return BatchObject.model_validate(data)
 
-    def list(self, *, after: str | None = None, limit: int | None = None) -> BatchListResponse:
+    def list(
+        self,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        request_id: Optional[str] = None,
+    ) -> BatchListResponse:
         query = {}
         if after is not None:
             query["after"] = after
         if limit is not None:
             query["limit"] = str(limit)
-        data = self._http.get("/v1/batches", params=query or None)
+        data = self._http.get("/v1/batches", params=query or None, request_id=request_id)
         return BatchListResponse.model_validate(data)
 
-    def get(self, batch_id: str) -> BatchObject:
-        data = self._http.get(f"/v1/batches/{quote(batch_id, safe='')}")
+    def get(self, batch_id: str, *, request_id: Optional[str] = None) -> BatchObject:
+        data = self._http.get(f"/v1/batches/{quote(batch_id, safe='')}", request_id=request_id)
         return BatchObject.model_validate(data)
 
-    def cancel(self, batch_id: str) -> BatchObject:
-        data = self._http.post(f"/v1/batches/{quote(batch_id, safe='')}/cancel", {})
+    def cancel(self, batch_id: str, *, request_id: Optional[str] = None) -> BatchObject:
+        data = self._http.post(
+            f"/v1/batches/{quote(batch_id, safe='')}/cancel", {}, request_id=request_id
+        )
         return BatchObject.model_validate(data)
 
 
@@ -38,25 +51,37 @@ class AsyncBatchesResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def create(self, params: CreateBatchParams) -> BatchObject:
-        data = await self._http.post("/v1/batches", params.model_dump(exclude_none=True))
+    async def create(
+        self, params: CreateBatchParams, *, request_id: Optional[str] = None
+    ) -> BatchObject:
+        data = await self._http.post(
+            "/v1/batches", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return BatchObject.model_validate(data)
 
     async def list(
-        self, *, after: str | None = None, limit: int | None = None
+        self,
+        *,
+        after: str | None = None,
+        limit: int | None = None,
+        request_id: Optional[str] = None,
     ) -> BatchListResponse:
         query = {}
         if after is not None:
             query["after"] = after
         if limit is not None:
             query["limit"] = str(limit)
-        data = await self._http.get("/v1/batches", params=query or None)
+        data = await self._http.get("/v1/batches", params=query or None, request_id=request_id)
         return BatchListResponse.model_validate(data)
 
-    async def get(self, batch_id: str) -> BatchObject:
-        data = await self._http.get(f"/v1/batches/{quote(batch_id, safe='')}")
+    async def get(self, batch_id: str, *, request_id: Optional[str] = None) -> BatchObject:
+        data = await self._http.get(
+            f"/v1/batches/{quote(batch_id, safe='')}", request_id=request_id
+        )
         return BatchObject.model_validate(data)
 
-    async def cancel(self, batch_id: str) -> BatchObject:
-        data = await self._http.post(f"/v1/batches/{quote(batch_id, safe='')}/cancel", {})
+    async def cancel(self, batch_id: str, *, request_id: Optional[str] = None) -> BatchObject:
+        data = await self._http.post(
+            f"/v1/batches/{quote(batch_id, safe='')}/cancel", {}, request_id=request_id
+        )
         return BatchObject.model_validate(data)

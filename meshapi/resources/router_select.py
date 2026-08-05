@@ -9,6 +9,8 @@ failure the router returns the configured default model with
 
 from __future__ import annotations
 
+from typing import Optional
+
 from .._http import AsyncHttpClient, SyncHttpClient
 from .._types import RouterSelectParams, RouterSelectResponse
 
@@ -17,8 +19,12 @@ class RouterResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def select(self, params: RouterSelectParams) -> RouterSelectResponse:
-        data = self._http.post("/v1/router/select", params.model_dump(exclude_none=True))
+    def select(
+        self, params: RouterSelectParams, *, request_id: Optional[str] = None
+    ) -> RouterSelectResponse:
+        data = self._http.post(
+            "/v1/router/select", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return RouterSelectResponse.model_validate(data)
 
 
@@ -26,6 +32,10 @@ class AsyncRouterResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def select(self, params: RouterSelectParams) -> RouterSelectResponse:
-        data = await self._http.post("/v1/router/select", params.model_dump(exclude_none=True))
+    async def select(
+        self, params: RouterSelectParams, *, request_id: Optional[str] = None
+    ) -> RouterSelectResponse:
+        data = await self._http.post(
+            "/v1/router/select", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return RouterSelectResponse.model_validate(data)

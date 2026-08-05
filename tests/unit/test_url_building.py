@@ -48,7 +48,7 @@ def test_models_free_query_param():
     mock_http.get.return_value = []
     resource = ModelsResource(mock_http)
     resource.list(free=True)
-    mock_http.get.assert_called_once_with("/v1/models", params={"free": "true"})
+    mock_http.get.assert_called_once_with("/v1/models", params={"free": "true"}, request_id=None)
 
 
 def test_models_paid_query_param():
@@ -59,7 +59,7 @@ def test_models_paid_query_param():
     mock_http.get.return_value = []
     resource = ModelsResource(mock_http)
     resource.list(free=False)
-    mock_http.get.assert_called_once_with("/v1/models", params={"free": "false"})
+    mock_http.get.assert_called_once_with("/v1/models", params={"free": "false"}, request_id=None)
 
 
 def test_models_no_filter_no_params():
@@ -70,7 +70,7 @@ def test_models_no_filter_no_params():
     mock_http.get.return_value = []
     resource = ModelsResource(mock_http)
     resource.list()
-    mock_http.get.assert_called_once_with("/v1/models", params=None)
+    mock_http.get.assert_called_once_with("/v1/models", params=None, request_id=None)
 
 
 def test_template_get_path():
@@ -85,7 +85,7 @@ def test_template_get_path():
     }
     resource = TemplatesResource(mock_http)
     resource.get("abc")
-    mock_http.get.assert_called_once_with("/v1/templates/abc")
+    mock_http.get.assert_called_once_with("/v1/templates/abc", request_id=None)
 
 
 def test_template_delete_path():
@@ -95,4 +95,4 @@ def test_template_delete_path():
     mock_http = MagicMock()
     resource = TemplatesResource(mock_http)
     resource.delete("xyz")
-    mock_http.delete.assert_called_once_with("/v1/templates/xyz")
+    mock_http.delete.assert_called_once_with("/v1/templates/xyz", request_id=None)

@@ -18,22 +18,31 @@ class VideosResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def generate(self, params: VideoGenerationParams) -> CreateVideoGenerationResponse:
+    def generate(
+        self, params: VideoGenerationParams, *, request_id: Optional[str] = None
+    ) -> CreateVideoGenerationResponse:
         """POST /v1/video/generations — submit a video generation task."""
-        data = self._http.post("/v1/video/generations", params.model_dump(exclude_none=True))
+        data = self._http.post(
+            "/v1/video/generations", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return CreateVideoGenerationResponse.model_validate(data)
 
-    def list(self, params: Optional[ListVideoGenerationsParams] = None) -> VideoTaskListResponse:
+    def list(
+        self,
+        params: Optional[ListVideoGenerationsParams] = None,
+        *,
+        request_id: Optional[str] = None,
+    ) -> VideoTaskListResponse:
         """GET /v1/video/generations — list video generation tasks."""
         query = None
         if params is not None:
             query = {k: str(v) for k, v in params.model_dump(exclude_none=True).items()} or None
-        data = self._http.get("/v1/video/generations", params=query)
+        data = self._http.get("/v1/video/generations", params=query, request_id=request_id)
         return VideoTaskListResponse.model_validate(data)
 
-    def retrieve(self, task_id: str) -> VideoTaskResponse:
+    def retrieve(self, task_id: str, *, request_id: Optional[str] = None) -> VideoTaskResponse:
         """GET /v1/video/generations/{task_id} — get a video generation task."""
-        data = self._http.get(f"/v1/video/generations/{task_id}")
+        data = self._http.get(f"/v1/video/generations/{task_id}", request_id=request_id)
         return VideoTaskResponse.model_validate(data)
 
 
@@ -41,17 +50,28 @@ class AsyncVideosResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def generate(self, params: VideoGenerationParams) -> CreateVideoGenerationResponse:
-        data = await self._http.post("/v1/video/generations", params.model_dump(exclude_none=True))
+    async def generate(
+        self, params: VideoGenerationParams, *, request_id: Optional[str] = None
+    ) -> CreateVideoGenerationResponse:
+        data = await self._http.post(
+            "/v1/video/generations", params.model_dump(exclude_none=True), request_id=request_id
+        )
         return CreateVideoGenerationResponse.model_validate(data)
 
-    async def list(self, params: Optional[ListVideoGenerationsParams] = None) -> VideoTaskListResponse:
+    async def list(
+        self,
+        params: Optional[ListVideoGenerationsParams] = None,
+        *,
+        request_id: Optional[str] = None,
+    ) -> VideoTaskListResponse:
         query = None
         if params is not None:
             query = {k: str(v) for k, v in params.model_dump(exclude_none=True).items()} or None
-        data = await self._http.get("/v1/video/generations", params=query)
+        data = await self._http.get("/v1/video/generations", params=query, request_id=request_id)
         return VideoTaskListResponse.model_validate(data)
 
-    async def retrieve(self, task_id: str) -> VideoTaskResponse:
-        data = await self._http.get(f"/v1/video/generations/{task_id}")
+    async def retrieve(
+        self, task_id: str, *, request_id: Optional[str] = None
+    ) -> VideoTaskResponse:
+        data = await self._http.get(f"/v1/video/generations/{task_id}", request_id=request_id)
         return VideoTaskResponse.model_validate(data)

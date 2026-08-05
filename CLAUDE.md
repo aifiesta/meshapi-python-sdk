@@ -163,6 +163,7 @@ pytest test_rag.py::test_rag_upload_embed_search -v
 | `test_video.py` | Video list, generate → retrieve |
 | `test_compare.py` | Non-streaming compare, streaming compare |
 | `test_moderations.py` | Moderation classify: text and multimodal input |
+| `test_request_id.py` | Request-id set (echo) + read (`_request_id`, `err.request_id`) |
 
 ---
 

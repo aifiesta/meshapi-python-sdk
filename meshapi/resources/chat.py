@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Dict, Iterator, Type, TypeVar, overload
+from typing import Any, AsyncIterator, Dict, Iterator, Optional, Type, TypeVar, overload
 
 from pydantic import BaseModel, ValidationError
 
@@ -24,14 +24,23 @@ class CompletionsResource:
     def __init__(self, http: SyncHttpClient) -> None:
         self._http = http
 
-    def create(self, params: ChatCompletionParams) -> ChatCompletionResponse:
-        """Non-streaming completion. Returns the full response."""
+    def create(
+        self, params: ChatCompletionParams, *, request_id: Optional[str] = None
+    ) -> ChatCompletionResponse:
+        """Non-streaming completion. Returns the full response.
+
+        ``request_id`` (optional) is sent as the ``X-Request-Id`` header; the
+        backend echoes it back and tags all logs for the call with it. Must
+        match ``^[A-Za-z0-9._:-]{1,64}$`` or ValueError is raised.
+        """
         body = params.model_dump(exclude_none=True)
         body["stream"] = False
-        data = self._http.post("/v1/chat/completions", body)
+        data = self._http.post("/v1/chat/completions", body, request_id=request_id)
         return ChatCompletionResponse.model_validate(data)
 
-    def stream(self, params: ChatCompletionParams) -> Iterator[ChatCompletionChunk]:
+    def stream(
+        self, params: ChatCompletionParams, *, request_id: Optional[str] = None
+    ) -> Iterator[ChatCompletionChunk]:
         """Streaming completion. Returns an iterator of SSE chunks.
 
         Streams do NOT retry on failure. Catch MeshAPIApiError and
@@ -39,19 +48,19 @@ class CompletionsResource:
         """
         body = params.model_dump(exclude_none=True)
         body["stream"] = True
-        yield from self._http.stream("/v1/chat/completions", body)
+        return self._http.stream("/v1/chat/completions", body, request_id=request_id)
 
     @overload
     def parse(self, params: ChatCompletionParams, response_format: Type[_T],
-              *, max_retries: int = 0) -> _T: ...
+              *, max_retries: int = 0, request_id: Optional[str] = None) -> _T: ...
     @overload
     def parse(self, params: ChatCompletionParams, response_format: Dict[str, Any],
-              *, max_retries: int = 0) -> Any: ...
+              *, max_retries: int = 0, request_id: Optional[str] = None) -> Any: ...
     @overload
     def parse(self, params: ChatCompletionParams, response_format: Any,
-              *, max_retries: int = 0) -> Any: ...
+              *, max_retries: int = 0, request_id: Optional[str] = None) -> Any: ...
 
-    def parse(self, params, response_format, *, max_retries=0):
+    def parse(self, params, response_format, *, max_retries=0, request_id=None):
         """Structured (JSON-schema-constrained) completion.
 
         ``response_format`` may be a Pydantic model class (-> typed instance),
@@ -72,7 +81,7 @@ class CompletionsResource:
         body["response_format"] = build_response_format(response_format)
         attempt = 0
         while True:
-            data = self._http.post("/v1/chat/completions", body)
+            data = self._http.post("/v1/chat/completions", body, request_id=request_id)
             resp = ChatCompletionResponse.model_validate(data)
             content = extract_content(resp)
             try:
@@ -98,14 +107,18 @@ class AsyncCompletionsResource:
     def __init__(self, http: AsyncHttpClient) -> None:
         self._http = http
 
-    async def create(self, params: ChatCompletionParams) -> ChatCompletionResponse:
-        """Non-streaming completion."""
+    async def create(
+        self, params: ChatCompletionParams, *, request_id: Optional[str] = None
+    ) -> ChatCompletionResponse:
+        """Non-streaming completion. See ``CompletionsResource.create``."""
         body = params.model_dump(exclude_none=True)
         body["stream"] = False
-        data = await self._http.post("/v1/chat/completions", body)
+        data = await self._http.post("/v1/chat/completions", body, request_id=request_id)
         return ChatCompletionResponse.model_validate(data)
 
-    async def stream(self, params: ChatCompletionParams) -> AsyncIterator[ChatCompletionChunk]:
+    def stream(
+        self, params: ChatCompletionParams, *, request_id: Optional[str] = None
+    ) -> AsyncIterator[ChatCompletionChunk]:
         """Streaming completion. Returns an async iterator of SSE chunks.
 
         Streams do NOT retry on failure. Catch MeshAPIApiError and
@@ -113,27 +126,26 @@ class AsyncCompletionsResource:
         """
         body = params.model_dump(exclude_none=True)
         body["stream"] = True
-        async for chunk in self._http.stream("/v1/chat/completions", body):
-            yield chunk
+        return self._http.stream("/v1/chat/completions", body, request_id=request_id)
 
     @overload
     async def parse(self, params: ChatCompletionParams, response_format: Type[_T],
-                    *, max_retries: int = 0) -> _T: ...
+                    *, max_retries: int = 0, request_id: Optional[str] = None) -> _T: ...
     @overload
     async def parse(self, params: ChatCompletionParams, response_format: Dict[str, Any],
-                    *, max_retries: int = 0) -> Any: ...
+                    *, max_retries: int = 0, request_id: Optional[str] = None) -> Any: ...
     @overload
     async def parse(self, params: ChatCompletionParams, response_format: Any,
-                    *, max_retries: int = 0) -> Any: ...
+                    *, max_retries: int = 0, request_id: Optional[str] = None) -> Any: ...
 
-    async def parse(self, params, response_format, *, max_retries=0):
+    async def parse(self, params, response_format, *, max_retries=0, request_id=None):
         """Async structured completion. See ``CompletionsResource.parse``."""
         body = params.model_dump(exclude_none=True)
         body["stream"] = False
         body["response_format"] = build_response_format(response_format)
         attempt = 0
         while True:
-            data = await self._http.post("/v1/chat/completions", body)
+            data = await self._http.post("/v1/chat/completions", body, request_id=request_id)
             resp = ChatCompletionResponse.model_validate(data)
             content = extract_content(resp)
             try:

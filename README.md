@@ -619,6 +619,35 @@ except MeshAPIError as e:
 | `upstream_error` | 500 | Upstream or server error |
 | `stream_interrupted` | n/a | Mid-stream connection dropped |
 
+## Request IDs
+
+Every backend response carries an `X-Request-Id` header (format `req_<ULID>`) — quote it when reporting issues or digging through logs.
+
+**Reading it.** Successful responses expose it as `response._request_id` (mirroring openai-python); errors expose it as `err.request_id`:
+
+```python
+resp = client.chat.completions.create(params)
+print(resp._request_id)   # "req_01J..." — None if the header was absent
+
+try:
+    client.chat.completions.create(params)
+except MeshAPIError as e:
+    print(e.request_id)
+```
+
+`_request_id` is a private attribute: it never appears in `model_dump()` / `model_dump_json()`.
+
+**Setting it.** Pass `request_id=` to any resource method to supply your own id (e.g. to correlate with your own tracing). The backend echoes it back on the response:
+
+```python
+resp = client.chat.completions.create(params, request_id="my-trace-42")
+assert resp._request_id == "my-trace-42"
+```
+
+Allowed values: 1–64 characters from `A-Z a-z 0-9 . _ : -` (regex `^[A-Za-z0-9._:-]{1,64}$`). Anything else raises `ValueError` locally — the backend would silently ignore an invalid id and mint its own.
+
+Streaming note: SSE chunks are yielded without response-header access, so streamed chunks do not carry `_request_id`. To correlate a stream, pass your own `request_id=` to `stream()`. The Realtime WebSocket API does not support request ids.
+
 ## Retry and backoff
 
 Retries on 429/502/503/504 with exponential backoff (default 3 retries, 500 ms base, 30 s max). **Streams do not retry.**

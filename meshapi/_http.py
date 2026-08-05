@@ -6,6 +6,7 @@ import asyncio
 import json
 import math
 import random
+import re
 import time
 from dataclasses import dataclass, field
 from typing import (
@@ -35,6 +36,59 @@ _BACKOFF_MAX_MS = 30_000
 
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
 _SDK_VERSION_VALUE = "python/0.1.11"
+
+_REQUEST_ID_HEADER = "X-Request-Id"
+_RESPONSE_REQUEST_ID_HEADER = "x-request-id"
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
+
+
+def validate_request_id(request_id: str) -> str:
+    """Validate a caller-supplied request id.
+
+    The backend only honours ids matching ``^[A-Za-z0-9._:-]{1,64}$`` and
+    silently ignores anything else — so the SDK fails fast instead.
+    """
+    if not isinstance(request_id, str) or not _REQUEST_ID_PATTERN.match(request_id):
+        raise ValueError(
+            "Invalid request_id: must be 1-64 characters from [A-Za-z0-9._:-], "
+            f"got {request_id!r}. The backend silently ignores invalid ids, so "
+            "the SDK rejects them up front."
+        )
+    return request_id
+
+
+class _DictPayload(dict):
+    """A dict that can carry the server request id alongside the JSON payload."""
+
+    meshapi_request_id: Optional[str] = None
+
+
+class _ListPayload(list):
+    """A list that can carry the server request id alongside the JSON payload."""
+
+    meshapi_request_id: Optional[str] = None
+
+
+def _attach_request_id(parsed: Any, response: httpx.Response) -> Any:
+    """Wrap a parsed JSON payload so the X-Request-Id response header travels
+    with it. ``MeshModel.model_validate`` picks it up and sets ``_request_id``
+    on the resulting model. Top-level list elements are wrapped too so
+    list-returning endpoints (e.g. models.list) also expose it per item."""
+    server_request_id = response.headers.get(_RESPONSE_REQUEST_ID_HEADER)
+    if server_request_id is None:
+        return parsed
+    if isinstance(parsed, dict):
+        wrapped = _DictPayload(parsed)
+        wrapped.meshapi_request_id = server_request_id
+        return wrapped
+    if isinstance(parsed, list):
+        wrapped_items = _ListPayload(
+            _attach_request_id(item, response) if isinstance(item, dict) else item
+            for item in parsed
+        )
+        wrapped_items.meshapi_request_id = server_request_id
+        return wrapped_items
+    return parsed
 
 
 @dataclass
@@ -300,13 +354,16 @@ class SyncHttpClient:
             timeout=config.timeout,
         )
 
-    def _headers(self) -> Dict[str, str]:
-        return {
+    def _headers(self, request_id: Optional[str] = None) -> Dict[str, str]:
+        headers = {
             "Authorization": f"Bearer {self._config.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
         }
+        if request_id is not None:
+            headers[_REQUEST_ID_HEADER] = validate_request_id(request_id)
+        return headers
 
     def _request(
         self,
@@ -316,9 +373,10 @@ class SyncHttpClient:
         params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Any] = None,
         stream: bool = False,
+        request_id: Optional[str] = None,
     ) -> httpx.Response:
         kwargs: Dict[str, Any] = {
-            "headers": self._headers(),
+            "headers": self._headers(request_id),
             "params": params,
         }
         if json_body is not None:
@@ -345,40 +403,52 @@ class SyncHttpClient:
         # Should never reach here
         raise RuntimeError("unreachable")
 
-    def get(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> Any:
-        response = self._request("GET", path, params=params)
+    def get(
+        self,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        request_id: Optional[str] = None,
+    ) -> Any:
+        response = self._request("GET", path, params=params, request_id=request_id)
         if response.status_code == 204:
             return None
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    def post(self, path: str, body: Any) -> Any:
-        response = self._request("POST", path, json_body=body)
+    def post(self, path: str, body: Any, *, request_id: Optional[str] = None) -> Any:
+        response = self._request("POST", path, json_body=body, request_id=request_id)
         if response.status_code == 204:
             return None
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    def patch(self, path: str, body: Any) -> Any:
-        response = self._request("PATCH", path, json_body=body)
+    def patch(self, path: str, body: Any, *, request_id: Optional[str] = None) -> Any:
+        response = self._request("PATCH", path, json_body=body, request_id=request_id)
         if response.status_code == 204:
             return None
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    def delete(self, path: str) -> None:
-        response = self._request("DELETE", path)
+    def delete(self, path: str, *, request_id: Optional[str] = None) -> None:
+        response = self._request("DELETE", path, request_id=request_id)
         if response.status_code == 204:
             return
         response.json()  # consume body; _raise_for_status already ran
 
-    def get_bytes(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> bytes:
-        response = self._request("GET", path, params=params)
+    def get_bytes(
+        self,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        request_id: Optional[str] = None,
+    ) -> bytes:
+        response = self._request("GET", path, params=params, request_id=request_id)
         return response.content
 
-    def post_bytes(self, path: str, body: Any) -> bytes:
-        response = self._request("POST", path, json_body=body)
+    def post_bytes(self, path: str, body: Any, *, request_id: Optional[str] = None) -> bytes:
+        response = self._request("POST", path, json_body=body, request_id=request_id)
         return response.content
 
-    def post_multipart(self, path: str, fields: Dict[str, Any], file_data: Optional[tuple] = None, file_field: str = "file") -> Any:
-        headers = {k: v for k, v in self._headers().items() if k != "Content-Type"}
+    def post_multipart(self, path: str, fields: Dict[str, Any], file_data: Optional[tuple] = None, file_field: str = "file", request_id: Optional[str] = None) -> Any:
+        headers = {k: v for k, v in self._headers(request_id).items() if k != "Content-Type"}
         files = None
         data = None
         if file_data is not None:
@@ -388,20 +458,38 @@ class SyncHttpClient:
             data = {k: str(v) for k, v in fields.items() if v is not None}
         response = self._client.post(path, headers=headers, data=data, files=files)
         _raise_for_status(response)
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    def stream(self, path: str, body: Any) -> Iterator[ChatCompletionChunk]:
+    def stream(
+        self, path: str, body: Any, *, request_id: Optional[str] = None
+    ) -> Iterator[ChatCompletionChunk]:
+        # Headers are built eagerly so an invalid request_id raises ValueError
+        # before the stream generator is first iterated.
+        headers = self._headers(request_id)
+        return self._stream_frames(path, body, headers)
+
+    def _stream_frames(
+        self, path: str, body: Any, headers: Dict[str, str]
+    ) -> Iterator[ChatCompletionChunk]:
         with self._client.stream(
-            "POST", path, json=body, headers=self._headers()
+            "POST", path, json=body, headers=headers
         ) as response:
             if response.status_code >= 400:
                 response.read()
             _raise_for_status(response)
             yield from _iter_sse(response)
 
-    def stream_json(self, path: str, body: Any, model_cls: Type[T]) -> Iterator[T]:
+    def stream_json(
+        self, path: str, body: Any, model_cls: Type[T], *, request_id: Optional[str] = None
+    ) -> Iterator[T]:
+        headers = self._headers(request_id)
+        return self._stream_json_frames(path, body, model_cls, headers)
+
+    def _stream_json_frames(
+        self, path: str, body: Any, model_cls: Type[T], headers: Dict[str, str]
+    ) -> Iterator[T]:
         with self._client.stream(
-            "POST", path, json=body, headers=self._headers()
+            "POST", path, json=body, headers=headers
         ) as response:
             if response.status_code >= 400:
                 response.read()
@@ -431,13 +519,16 @@ class AsyncHttpClient:
             timeout=config.timeout,
         )
 
-    def _headers(self) -> Dict[str, str]:
-        return {
+    def _headers(self, request_id: Optional[str] = None) -> Dict[str, str]:
+        headers = {
             "Authorization": f"Bearer {self._config.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
         }
+        if request_id is not None:
+            headers[_REQUEST_ID_HEADER] = validate_request_id(request_id)
+        return headers
 
     async def _request(
         self,
@@ -446,9 +537,10 @@ class AsyncHttpClient:
         *,
         params: Optional[Dict[str, Any]] = None,
         json_body: Optional[Any] = None,
+        request_id: Optional[str] = None,
     ) -> httpx.Response:
         kwargs: Dict[str, Any] = {
-            "headers": self._headers(),
+            "headers": self._headers(request_id),
             "params": params,
         }
         if json_body is not None:
@@ -468,41 +560,51 @@ class AsyncHttpClient:
 
         raise RuntimeError("unreachable")
 
-    async def get(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> Any:
-        response = await self._request("GET", path, params=params)
+    async def get(
+        self,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        request_id: Optional[str] = None,
+    ) -> Any:
+        response = await self._request("GET", path, params=params, request_id=request_id)
         if response.status_code == 204:
             return None
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    async def post(self, path: str, body: Any) -> Any:
-        response = await self._request("POST", path, json_body=body)
+    async def post(self, path: str, body: Any, *, request_id: Optional[str] = None) -> Any:
+        response = await self._request("POST", path, json_body=body, request_id=request_id)
         if response.status_code == 204:
             return None
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    async def patch(self, path: str, body: Any) -> Any:
-        response = await self._request("PATCH", path, json_body=body)
+    async def patch(self, path: str, body: Any, *, request_id: Optional[str] = None) -> Any:
+        response = await self._request("PATCH", path, json_body=body, request_id=request_id)
         if response.status_code == 204:
             return None
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    async def delete(self, path: str) -> None:
-        response = await self._request("DELETE", path)
+    async def delete(self, path: str, *, request_id: Optional[str] = None) -> None:
+        response = await self._request("DELETE", path, request_id=request_id)
         if response.status_code == 204:
             return
 
     async def get_bytes(
-        self, path: str, *, params: Optional[Dict[str, Any]] = None
+        self,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        request_id: Optional[str] = None,
     ) -> bytes:
-        response = await self._request("GET", path, params=params)
+        response = await self._request("GET", path, params=params, request_id=request_id)
         return response.content
 
-    async def post_bytes(self, path: str, body: Any) -> bytes:
-        response = await self._request("POST", path, json_body=body)
+    async def post_bytes(self, path: str, body: Any, *, request_id: Optional[str] = None) -> bytes:
+        response = await self._request("POST", path, json_body=body, request_id=request_id)
         return response.content
 
-    async def post_multipart(self, path: str, fields: Dict[str, Any], file_data: Optional[tuple] = None, file_field: str = "file") -> Any:
-        headers = {k: v for k, v in self._headers().items() if k != "Content-Type"}
+    async def post_multipart(self, path: str, fields: Dict[str, Any], file_data: Optional[tuple] = None, file_field: str = "file", request_id: Optional[str] = None) -> Any:
+        headers = {k: v for k, v in self._headers(request_id).items() if k != "Content-Type"}
         files = None
         data = None
         if file_data is not None:
@@ -512,11 +614,21 @@ class AsyncHttpClient:
             data = {k: str(v) for k, v in fields.items() if v is not None}
         response = await self._client.post(path, headers=headers, data=data, files=files)
         _raise_for_status(response)
-        return response.json()
+        return _attach_request_id(response.json(), response)
 
-    async def stream(self, path: str, body: Any) -> AsyncIterator[ChatCompletionChunk]:
+    def stream(
+        self, path: str, body: Any, *, request_id: Optional[str] = None
+    ) -> AsyncIterator[ChatCompletionChunk]:
+        # Headers are built eagerly so an invalid request_id raises ValueError
+        # before the async stream generator is first iterated.
+        headers = self._headers(request_id)
+        return self._stream_frames(path, body, headers)
+
+    async def _stream_frames(
+        self, path: str, body: Any, headers: Dict[str, str]
+    ) -> AsyncIterator[ChatCompletionChunk]:
         async with self._client.stream(
-            "POST", path, json=body, headers=self._headers()
+            "POST", path, json=body, headers=headers
         ) as response:
             if response.status_code >= 400:
                 await response.aread()
@@ -524,11 +636,17 @@ class AsyncHttpClient:
             async for chunk in _aiter_sse(response):
                 yield chunk
 
-    async def stream_json(
-        self, path: str, body: Any, model_cls: Type[T]
+    def stream_json(
+        self, path: str, body: Any, model_cls: Type[T], *, request_id: Optional[str] = None
+    ) -> AsyncIterator[T]:
+        headers = self._headers(request_id)
+        return self._stream_json_frames(path, body, model_cls, headers)
+
+    async def _stream_json_frames(
+        self, path: str, body: Any, model_cls: Type[T], headers: Dict[str, str]
     ) -> AsyncIterator[T]:
         async with self._client.stream(
-            "POST", path, json=body, headers=self._headers()
+            "POST", path, json=body, headers=headers
         ) as response:
             if response.status_code >= 400:
                 await response.aread()
