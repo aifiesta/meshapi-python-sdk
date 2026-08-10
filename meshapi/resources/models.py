@@ -1,4 +1,10 @@
-"""Models resource — GET /v1/models[/free|/paid|/search|/{model_id}]."""
+"""Models resource — GET /v1/models[/search|/{model_id}].
+
+``free()`` and ``paid()`` are kept as convenience wrappers over
+``list(free=...)``. The backend's ``/v1/models/free`` and ``/v1/models/paid``
+shortcuts were removed in favour of the ``?free=`` query parameter; the method
+names stay so callers don't have to change.
+"""
 
 from __future__ import annotations
 
@@ -31,12 +37,10 @@ class ModelsResource:
         return [ModelInfo.model_validate(m) for m in (data or [])]
 
     def free(self) -> List[ModelInfo]:
-        data = self._http.get("/v1/models/free")
-        return [ModelInfo.model_validate(m) for m in (data or [])]
+        return self.list(free=True)
 
     def paid(self) -> List[ModelInfo]:
-        data = self._http.get("/v1/models/paid")
-        return [ModelInfo.model_validate(m) for m in (data or [])]
+        return self.list(free=False)
 
     def search(self, params: Optional[ModelSearchParams] = None) -> ModelsPage:
         qs = (params or ModelSearchParams()).model_dump(exclude_none=True)
@@ -73,12 +77,10 @@ class AsyncModelsResource:
         return [ModelInfo.model_validate(m) for m in (data or [])]
 
     async def free(self) -> List[ModelInfo]:
-        data = await self._http.get("/v1/models/free")
-        return [ModelInfo.model_validate(m) for m in (data or [])]
+        return await self.list(free=True)
 
     async def paid(self) -> List[ModelInfo]:
-        data = await self._http.get("/v1/models/paid")
-        return [ModelInfo.model_validate(m) for m in (data or [])]
+        return await self.list(free=False)
 
     async def search(self, params: Optional[ModelSearchParams] = None) -> ModelsPage:
         qs = (params or ModelSearchParams()).model_dump(exclude_none=True)
