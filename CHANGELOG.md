@@ -7,8 +7,8 @@
 - **This release targets MeshAPI version `2026-08`.** Every request now sends
   `X-Mesh-Version: 2026-08`, exported as `meshapi.MESH_API_VERSION`.
 - Override per client with `MeshAPI(api_version="2026-09")`, or pass
-  `api_version=None` to send no header and be served the gateway's baseline
-  (the pre-`0.1.12` behaviour).
+  `api_version=None` to send no header and be served the gateway's baseline —
+  the behaviour of `0.1.12` and earlier, kept reachable on purpose.
 - Why it matters: an unpinned client is served whatever the gateway defaults to, so
   it never states which response shape it can parse. Pinning means a future version
   that changes a shape cannot change it underneath this release.
