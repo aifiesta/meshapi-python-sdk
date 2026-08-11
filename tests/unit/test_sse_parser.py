@@ -80,10 +80,16 @@ def test_parse_error_frame_raises():
 # ---------------------------------------------------------------------------
 
 
-def build_mock_response(byte_chunks: List[bytes]):
-    """Build a mock httpx Response whose iter_bytes() yields the given chunks."""
+def build_mock_response(byte_chunks: List[bytes], request_id: str = ""):
+    """Build a mock httpx Response whose iter_bytes() yields the given chunks.
+
+    ``headers`` is a real dict, not a MagicMock: the parser reads
+    ``x-request-id`` off it, and a MagicMock would hand back a truthy mock that
+    silently satisfies any assertion about the id.
+    """
     mock_resp = MagicMock()
     mock_resp.iter_bytes.return_value = iter(byte_chunks)
+    mock_resp.headers = {"x-request-id": request_id} if request_id else {}
     return mock_resp
 
 
@@ -154,3 +160,68 @@ def test_iter_sse_chunked_across_multiple_packets():
     mock_resp = build_mock_response(packets)
     result = list(_iter_sse(mock_resp))
     assert [r.choices[0].delta.content for r in result] == ["X", "Y", "Z"]
+
+
+# ---------------------------------------------------------------------------
+# request_id on mid-stream error frames
+#
+# Reported by a customer on the Node SDK: an upstream_error mid-stream arrived
+# with an empty request id, so the one failure they most needed to report was
+# the one they could not identify. Every SDK had the same gap, for the same
+# reason — the frame parser read only the frame's own request_id, which the
+# gateway did not send, and could not see the response headers.
+# ---------------------------------------------------------------------------
+
+
+def test_error_frame_falls_back_to_the_response_header():
+    """Old gateways omit request_id from the frame; the header still has it."""
+    error_payload = {"error": {"code": "upstream_error", "message": "boom"}}
+    mock_resp = build_mock_response([make_sse_frame(error_payload)], "req_hdr")
+
+    with pytest.raises(MeshAPIError) as exc_info:
+        next(_iter_sse(mock_resp))
+    assert exc_info.value.request_id == "req_hdr"
+    assert exc_info.value.error_code == "upstream_error"
+
+
+def test_error_frame_prefers_its_own_request_id():
+    """Post-fix gateways send it in the body; that value is authoritative."""
+    error_payload = {
+        "error": {"code": "upstream_error", "message": "boom"},
+        "request_id": "req_body",
+    }
+    mock_resp = build_mock_response([make_sse_frame(error_payload)], "req_hdr")
+
+    with pytest.raises(MeshAPIError) as exc_info:
+        next(_iter_sse(mock_resp))
+    assert exc_info.value.request_id == "req_body"
+
+
+def test_error_frame_falls_back_when_frame_id_is_empty():
+    error_payload = {
+        "error": {"code": "upstream_error", "message": "boom"},
+        "request_id": "",
+    }
+    mock_resp = build_mock_response([make_sse_frame(error_payload)], "req_hdr")
+
+    with pytest.raises(MeshAPIError) as exc_info:
+        next(_iter_sse(mock_resp))
+    assert exc_info.value.request_id == "req_hdr"
+
+
+def test_error_frame_id_is_empty_when_neither_source_has_one():
+    error_payload = {"error": {"code": "upstream_error", "message": "boom"}}
+    mock_resp = build_mock_response([make_sse_frame(error_payload)])
+
+    with pytest.raises(MeshAPIError) as exc_info:
+        next(_iter_sse(mock_resp))
+    assert exc_info.value.request_id == ""
+
+
+def test_non_dict_error_frame_also_carries_the_id():
+    """The `{"error": "some string"}` branch must not drop it either."""
+    mock_resp = build_mock_response([make_sse_frame({"error": "plain string"})], "req_hdr")
+
+    with pytest.raises(MeshAPIError) as exc_info:
+        next(_iter_sse(mock_resp))
+    assert exc_info.value.request_id == "req_hdr"

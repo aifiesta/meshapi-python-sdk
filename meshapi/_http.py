@@ -23,6 +23,7 @@ from typing import (
 import httpx
 
 from ._errors import MeshAPIError
+from ._version import __version__
 from ._types import ChatCompletionChunk
 
 T = TypeVar("T")
@@ -34,7 +35,7 @@ _BACKOFF_BASE_MS = 500
 _BACKOFF_MAX_MS = 30_000
 
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
-_SDK_VERSION_VALUE = "python/0.1.11"
+_SDK_VERSION_VALUE = f"python/{__version__}"
 
 
 @dataclass
@@ -75,7 +76,24 @@ def _extract_sse_event(frame: str) -> Optional[str]:
     return None
 
 
-def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, object]]":
+def _frame_request_id(parsed: Any, fallback: str) -> str:
+    """Resolve the request id for a mid-stream error frame.
+
+    The frame's own ``request_id`` wins, but older gateway versions omit it
+    entirely — and by the time a mid-stream error arrives the response headers
+    are the only other place the id survives. Without the fallback the single
+    error a caller most needs to report is the one they cannot identify.
+    """
+    if isinstance(parsed, dict):
+        from_frame = parsed.get("request_id")
+        if isinstance(from_frame, str) and from_frame:
+            return from_frame
+    return fallback
+
+
+def _try_parse_sse_frame(
+    frame: str, fallback_request_id: str = ""
+) -> "Optional[Union[ChatCompletionChunk, object]]":
     """Parse one SSE frame string.
 
     Returns:
@@ -102,14 +120,14 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
                 err.get("message", "upstream error"),
                 status=0,
                 error_code=err.get("code", "upstream_error"),
-                request_id="",
+                request_id=_frame_request_id(parsed, fallback_request_id),
             )
         else:
             raise MeshAPIError(
                 str(err),
                 status=0,
                 error_code="upstream_error",
-                request_id="",
+                request_id=_frame_request_id(parsed, fallback_request_id),
             )
 
     sse_event = _extract_sse_event(frame)
@@ -120,7 +138,7 @@ def _try_parse_sse_frame(frame: str) -> "Optional[Union[ChatCompletionChunk, obj
 
 
 def _try_parse_json_sse_frame(
-    frame: str, model_cls: Type[T]
+    frame: str, model_cls: Type[T], fallback_request_id: str = ""
 ) -> Optional[Union[T, object]]:
     data_line = _extract_sse_data(frame)
     if data_line is None or data_line.strip() == "":
@@ -138,14 +156,14 @@ def _try_parse_json_sse_frame(
                 err.get("message", "upstream error"),
                 status=0,
                 error_code=err.get("code", "upstream_error"),
-                request_id="",
+                request_id=_frame_request_id(parsed, fallback_request_id),
             )
         else:
             raise MeshAPIError(
                 str(err),
                 status=0,
                 error_code="upstream_error",
-                request_id="",
+                request_id=_frame_request_id(parsed, fallback_request_id),
             )
 
     sse_event = _extract_sse_event(frame)
@@ -158,6 +176,9 @@ def _try_parse_json_sse_frame(
 def _iter_sse(response: httpx.Response) -> Iterator[ChatCompletionChunk]:
     """Sync SSE iterator with remainder-buffer handling. Stops on [DONE]."""
     remainder = ""
+    # Captured up front: by the time an error frame arrives the headers are
+    # the only place the id still exists.
+    header_request_id = response.headers.get("x-request-id", "")
     try:
         for raw_bytes in response.iter_bytes():
             try:
@@ -169,7 +190,7 @@ def _iter_sse(response: httpx.Response) -> Iterator[ChatCompletionChunk]:
             for frame in frames:
                 if not frame.strip():
                     continue
-                result = _try_parse_sse_frame(frame)
+                result = _try_parse_sse_frame(frame, header_request_id)
                 if result is _DONE_SENTINEL:
                     return
                 if result is not None:
@@ -182,6 +203,9 @@ def _iter_sse(response: httpx.Response) -> Iterator[ChatCompletionChunk]:
 
 def _iter_json_sse(response: httpx.Response, model_cls: Type[T]) -> Iterator[T]:
     remainder = ""
+    # Captured up front: by the time an error frame arrives the headers are
+    # the only place the id still exists.
+    header_request_id = response.headers.get("x-request-id", "")
     try:
         for raw_bytes in response.iter_bytes():
             try:
@@ -193,7 +217,7 @@ def _iter_json_sse(response: httpx.Response, model_cls: Type[T]) -> Iterator[T]:
             for frame in frames:
                 if not frame.strip():
                     continue
-                result = _try_parse_json_sse_frame(frame, model_cls)
+                result = _try_parse_json_sse_frame(frame, model_cls, header_request_id)
                 if result is _DONE_SENTINEL:
                     return
                 if result is not None:
@@ -207,6 +231,9 @@ def _iter_json_sse(response: httpx.Response, model_cls: Type[T]) -> Iterator[T]:
 async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionChunk]:
     """Async SSE iterator with remainder-buffer handling. Stops on [DONE]."""
     remainder = ""
+    # Captured up front: by the time an error frame arrives the headers are
+    # the only place the id still exists.
+    header_request_id = response.headers.get("x-request-id", "")
     try:
         async for raw_bytes in response.aiter_bytes():
             try:
@@ -218,7 +245,7 @@ async def _aiter_sse(response: httpx.Response) -> AsyncIterator[ChatCompletionCh
             for frame in frames:
                 if not frame.strip():
                     continue
-                result = _try_parse_sse_frame(frame)
+                result = _try_parse_sse_frame(frame, header_request_id)
                 if result is _DONE_SENTINEL:
                     return
                 if result is not None:
@@ -233,6 +260,9 @@ async def _aiter_json_sse(
     response: httpx.Response, model_cls: Type[T]
 ) -> AsyncIterator[T]:
     remainder = ""
+    # Captured up front: by the time an error frame arrives the headers are
+    # the only place the id still exists.
+    header_request_id = response.headers.get("x-request-id", "")
     try:
         async for raw_bytes in response.aiter_bytes():
             try:
@@ -244,7 +274,7 @@ async def _aiter_json_sse(
             for frame in frames:
                 if not frame.strip():
                     continue
-                result = _try_parse_json_sse_frame(frame, model_cls)
+                result = _try_parse_json_sse_frame(frame, model_cls, header_request_id)
                 if result is _DONE_SENTINEL:
                     return
                 if result is not None:
