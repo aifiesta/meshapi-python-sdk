@@ -23,6 +23,7 @@ from typing import (
 import httpx
 
 from ._errors import MeshAPIError
+from ._version import __version__
 from ._types import ChatCompletionChunk
 
 T = TypeVar("T")
@@ -34,7 +35,7 @@ _BACKOFF_BASE_MS = 500
 _BACKOFF_MAX_MS = 30_000
 
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
-_SDK_VERSION_VALUE = "python/0.1.12"
+_SDK_VERSION_VALUE = f"python/{__version__}"
 
 
 @dataclass
