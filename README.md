@@ -61,6 +61,43 @@ Get a key at [meshapi.ai](https://meshapi.ai). Data-plane keys are prefixed `rsk
 client = MeshAPI(base_url="https://api.meshapi.ai", token="rsk_...")
 ```
 
+## API version
+
+MeshAPI versions its contract by **date, in a request header**. This SDK sends the
+version it was built against on every request, so the response shapes it parses are
+the ones it was written for:
+
+```python
+from meshapi import MESH_API_VERSION
+
+MESH_API_VERSION            # "2026-08" — sent as X-Mesh-Version
+```
+
+Pin a different version per client — useful if you have migrated ahead of an SDK
+release:
+
+```python
+client = MeshAPI(base_url="...", token="rsk_...", api_version="2026-09")
+```
+
+Or opt out entirely and take whatever the gateway's default is:
+
+```python
+client = MeshAPI(base_url="...", token="rsk_...", api_version=None)
+```
+
+Two things worth knowing:
+
+- **Omitting the header is not the same as pinning.** With no header you get the
+  gateway's *baseline* — the oldest supported version — which is deliberately chosen
+  so an existing integration is never moved by a release. Pinning says which shape
+  you parse, which is what lets us tell you before that shape goes away.
+- **A version we do not serve is a `400 invalid_api_version`, not a silent
+  fallback.** A typo fails loudly rather than leaving you believing you are pinned.
+
+`GET /v1/api-versions` lists every version currently served, with which one is the
+baseline and which is the latest.
+
 ## Chat completions
 
 ```python

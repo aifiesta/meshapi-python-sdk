@@ -262,13 +262,24 @@ class ChatCompletionChunk(BaseModel):
 
 class ModelPricing(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    # Required by spec (nullable)
+    # Retired on the wire: the gateway stopped returning these in v1.0.135 and has no
+    # reference to them left. Kept declared because they are part of this SDK's
+    # published surface — deleting the attributes would raise AttributeError on
+    # callers that still read them, where they now simply read None. Use the
+    # per-1M or per-unit fields below instead.
     prompt_usd_per_1k: Optional[str] = None
     completion_usd_per_1k: Optional[str] = None
     # Optional spec fields (all str|null, values are strings per spec)
     pricing_unit: Optional[str] = None
     prompt_usd_per_1m: Optional[str] = None
     completion_usd_per_1m: Optional[str] = None
+    # The raw rate in this row's OWN ``pricing_unit``. For token-priced rows it
+    # equals the per-1M pair above; for everything else (per_second video,
+    # per_image, per_1k_chars, per_hour) the per-1M pair is null by design and this
+    # is the ONLY place the price exists — read it together with ``pricing_unit``,
+    # which is what makes the bare number a price.
+    input_usd_per_unit: Optional[str] = None
+    output_usd_per_unit: Optional[str] = None
     image_output_usd_per_image: Optional[str] = None
     request_usd: Optional[str] = None
     long_context_input_usd_per_1m: Optional[str] = None

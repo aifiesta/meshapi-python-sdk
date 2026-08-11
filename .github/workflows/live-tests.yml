@@ -53,8 +53,19 @@ jobs:
         working-directory: livetests
         run: pip install -r requirements.txt
 
+      # No workflow ran tests/unit or tests/contract, so a broken one merged green
+      # (MESH-508 found this while adding a contract test — a contract test no CI
+      # runs is theatre). They need no network and no secrets, so they run first
+      # and gate everything after them.
+      - name: Unit and contract tests
+        run: |
+          pip install -e ".[dev]"
+          pytest tests/unit tests/contract -q
+
       # Gating where safe (MESH-368): PRs and pushes run the cheap SMOKE subset
-      # (models list, one chat, embeddings/responses, one stream, 401/404) so
+      # (models list, one chat, embeddings/responses, one stream, 401/404, and the
+      # API-version pin — a stale pin 400s every single request, so it is the
+      # cheapest test with the widest blast radius) so
       # they gate reliably green — the full suite includes slow/flaky calls
       # (image generation, realtime WebSocket) that intermittently exceed
       # provider latency and shouldn't block unrelated PRs. The FULL suite
@@ -75,6 +86,7 @@ jobs:
         run: |
           if [ "${{ steps.mode.outputs.value }}" = "smoke" ]; then
             pytest test_models.py test_chat.py test_stream.py test_errors.py \
+              test_api_version.py \
               "test_inference_resources.py::test_embeddings_create" \
               "test_inference_resources.py::test_responses_create" \
               "test_inference_resources.py::test_responses_stream" \
