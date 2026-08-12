@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from ._errors import MeshAPIError, StructuredOutputError
-from ._http import AsyncHttpClient, MeshAPIConfig, SyncHttpClient
+from ._http import MESH_API_VERSION, AsyncHttpClient, MeshAPIConfig, SyncHttpClient
 from ._types import (
     ApiErrorBody,
     ApiErrorEnvelope,
@@ -142,6 +142,7 @@ from .resources.templates import AsyncTemplatesResource, TemplatesResource
 
 from ._version import __version__  # noqa: E402  (single source of truth)
 __all__ = [
+    "MESH_API_VERSION",
     "__version__",
     "MeshAPI",
     "AsyncMeshAPI",
@@ -314,6 +315,7 @@ class MeshAPI:
         timeout: float = 60.0,
         max_retries: int = 3,
         httpx_client: Any = None,
+        api_version: Optional[str] = MESH_API_VERSION,
     ) -> None:
         config = MeshAPIConfig(
             base_url=base_url,
@@ -321,6 +323,7 @@ class MeshAPI:
             timeout=timeout,
             max_retries=max_retries,
             httpx_client=httpx_client,
+            api_version=api_version,
         )
         http = SyncHttpClient(config)
         self.chat = ChatResource(http)
@@ -377,6 +380,7 @@ class AsyncMeshAPI:
         timeout: float = 60.0,
         max_retries: int = 3,
         async_httpx_client: Any = None,
+        api_version: Optional[str] = MESH_API_VERSION,
     ) -> None:
         config = MeshAPIConfig(
             base_url=base_url,
@@ -384,6 +388,7 @@ class AsyncMeshAPI:
             timeout=timeout,
             max_retries=max_retries,
             async_httpx_client=async_httpx_client,
+            api_version=api_version,
         )
         http = AsyncHttpClient(config)
         self.chat = AsyncChatResource(http)

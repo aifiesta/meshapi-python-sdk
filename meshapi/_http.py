@@ -37,6 +37,20 @@ _BACKOFF_MAX_MS = 30_000
 _SDK_VERSION_HEADER = "X-MeshAPI-SDK"
 _SDK_VERSION_VALUE = f"python/{__version__}"
 
+#: The dated MeshAPI contract this SDK release was written against (MESH-508). Sent
+#: as ``X-Mesh-Version`` on every request unless overridden.
+#:
+#: Sending it is the difference between "whatever the gateway defaults to" and "the
+#: response shape this release can actually parse". A caller who sends nothing gets
+#: the gateway's BASELINE, which is safe only while BASELINE does not move; a pinned
+#: caller is safe by contract, and the gateway can see who is still on an old shape
+#: before retiring it.
+#:
+#: Bump this in the same commit that adapts the models in ``_types.py`` to a newer
+#: version — never on its own, or the SDK claims a contract it cannot parse.
+MESH_API_VERSION = "2026-08"
+_API_VERSION_HEADER = "X-Mesh-Version"
+
 
 @dataclass
 class MeshAPIConfig:
@@ -46,6 +60,11 @@ class MeshAPIConfig:
     max_retries: int = _DEFAULT_MAX_RETRIES
     httpx_client: Optional[httpx.Client] = field(default=None, repr=False)
     async_httpx_client: Optional[httpx.AsyncClient] = field(default=None, repr=False)
+    #: Dated contract to pin. Defaults to what this release targets; pass ``None`` to
+    #: send no header at all and take the gateway's baseline, whatever it becomes.
+    #: Defaulting to the constant is what makes an explicit ``None`` meaningful
+    #: without needing a separate sentinel.
+    api_version: Optional[str] = MESH_API_VERSION
 
     def __post_init__(self) -> None:
         self.base_url = self.base_url.rstrip("/")
@@ -331,12 +350,18 @@ class SyncHttpClient:
         )
 
     def _headers(self) -> Dict[str, str]:
-        return {
+        headers = {
             "Authorization": f"Bearer {self._config.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
         }
+        # Falsy covers None (explicit opt-out) and "" — the gateway treats an EMPTY
+        # header value as a typo'd pin and 400s it, so sending one would be strictly
+        # worse than sending nothing.
+        if self._config.api_version:
+            headers[_API_VERSION_HEADER] = self._config.api_version
+        return headers
 
     def _request(
         self,
@@ -462,12 +487,18 @@ class AsyncHttpClient:
         )
 
     def _headers(self) -> Dict[str, str]:
-        return {
+        headers = {
             "Authorization": f"Bearer {self._config.token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             _SDK_VERSION_HEADER: _SDK_VERSION_VALUE,
         }
+        # Falsy covers None (explicit opt-out) and "" — the gateway treats an EMPTY
+        # header value as a typo'd pin and 400s it, so sending one would be strictly
+        # worse than sending nothing.
+        if self._config.api_version:
+            headers[_API_VERSION_HEADER] = self._config.api_version
+        return headers
 
     async def _request(
         self,
