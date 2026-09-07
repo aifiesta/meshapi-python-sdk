@@ -6,7 +6,7 @@ import os
 
 from meshapi import MeshAPI, SpeechParams, ListVoicesParams, TranscriptionParams
 
-TTS_MODEL = os.environ.get("MESHAPI_TTS_MODEL", "sarvam/bulbul:v2")
+TTS_MODEL = os.environ.get("MESHAPI_TTS_MODEL", "sarvam/bulbul:v3")
 STT_MODEL = os.environ.get("MESHAPI_STT_MODEL", "sarvam/saaras:v3")
 
 
