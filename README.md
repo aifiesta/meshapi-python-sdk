@@ -296,8 +296,9 @@ from meshapi import (
 audio_bytes = client.audio.synthesize(
     SpeechParams(
         input="Hello from MeshAPI.",
-        model="sarvam/bulbul:v2",
-        voice="meera",
+        model="sarvam/bulbul:v3",
+        # Sarvam models take their voice in `speaker`; `voice` is for other providers (e.g. ElevenLabs).
+        speaker="ritu",
     )
 )
 with open("output.wav", "wb") as f:
@@ -335,7 +336,7 @@ voice = client.audio.get_voice("voice-id")
 ### Async audio
 
 ```python
-audio_bytes = await client.audio.synthesize(SpeechParams(input="Hello!", model="sarvam/bulbul:v2"))
+audio_bytes = await client.audio.synthesize(SpeechParams(input="Hello!", model="sarvam/bulbul:v3"))
 voices = await client.audio.list_voices(ListVoicesParams())
 ```
 
