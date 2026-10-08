@@ -1202,12 +1202,21 @@ class WebSearchParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
     query: str = Field(..., min_length=1, max_length=2000)
     model: Optional[str] = None
-    provider: Optional[Literal["native", "tavily"]] = None
+    provider: Optional[Literal["native", "tavily", "tinyfish"]] = None
     max_results: int = Field(default=5, ge=1, le=20)
     search_depth: Literal["basic", "advanced"] = "basic"
     include_domains: Optional[List[str]] = None
     exclude_domains: Optional[List[str]] = None
     include_answer: bool = False
+    # Also return each result's extracted page text in `page_content`.
+    # Honoured by the tinyfish engine only, and the native engine is tried
+    # first, so pin `provider="tinyfish"` or expect no page text at all.
+    #
+    # Optional rather than `bool = False` like `include_answer` above: the
+    # params are dumped with exclude_none, so None keeps this key off the
+    # wire entirely and an existing call sends exactly the bytes it did
+    # before. False would be sent, which is harmless but not identical.
+    include_page_content: Optional[bool] = None
 
 
 class WebSearchResultItem(BaseModel):
@@ -1217,6 +1226,18 @@ class WebSearchResultItem(BaseModel):
     content: str = ""
     score: Optional[float] = None
     published_date: Optional[str] = None
+    # The result's extracted PAGE text, as opposed to `content` above, which
+    # stays the short snippet it has always been — page text never replaces it.
+    #
+    # None is normal, not an error: the server sends this key on every response
+    # from every engine, reading null unless the request asked for page content
+    # AND the serving engine produced some. A tinyfish result whose page could
+    # not be read also arrives as null, per result, without failing the search.
+    page_content: Optional[str] = None
+    # True when `page_content` was cut at the server's per-result ceiling.
+    # Check it before treating the text as a whole page: a truncated page served
+    # as complete is indistinguishable from a short one.
+    page_content_truncated: bool = False
 
 
 class WebSearchResponse(BaseModel):
@@ -1224,8 +1245,8 @@ class WebSearchResponse(BaseModel):
     query: str
     answer: Optional[str] = None
     results: List[WebSearchResultItem] = Field(default_factory=list)
-    # `provider` is always one of native|tavily today, but typed as str so an
-    # added engine never breaks response parsing for existing SDK versions.
+    # `provider` is always one of native|tavily|tinyfish today, but typed as str
+    # so an added engine never breaks response parsing for existing SDK versions.
     provider: str
     request_id: str = ""
 
