@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- `WebSearchParams.include_page_content` returns each result's extracted page text
+  in the new `WebSearchResultItem.page_content`, so one call replaces
+  search-then-fetch. `page_content_truncated` says when that text was cut at the
+  server's per-result ceiling, so a truncated page is never served as a whole one.
+  Only the `tinyfish` engine returns page text and the native engine is tried
+  first, so pin `provider="tinyfish"` when you need it.
+- `WebSearchParams.provider` accepts `"tinyfish"`. It has been a valid value on the
+  API for some time, but the `Literal` here rejected it, so the engine could not be
+  pinned from this SDK at all.
+- Leaving `include_page_content` unset sends no new key, so existing calls are
+  byte-identical on the wire.
+
 ### API version
 
 - **This release targets MeshAPI version `2026-08`.** Every request now sends
