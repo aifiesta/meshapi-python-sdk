@@ -121,15 +121,17 @@ def test_an_unserved_version_is_rejected_loudly() -> None:
     assert response.json()["error"]["code"] == "invalid_api_version"
 
 
-def test_an_unpinned_request_is_served_the_baseline() -> None:
-    """No header means the gateway's baseline, and it says which one it used. This is
-    what `api_version=None` opts into."""
-    baseline: Optional[str] = next(
-        (e["label"] for e in _served_versions() if e["baseline"]), None
-    )
-    assert baseline, "the gateway must mark exactly one version as the baseline"
+def test_an_unpinned_request_is_served_a_supported_default() -> None:
+    """No header means the account's default version: the org's `default_api_version`
+    copied onto the key at mint (LATEST by provisioning default), falling back to the
+    gateway BASELINE only when the org set none. So the served version is account-
+    dependent and need not equal the global baseline — it must be a supported, served
+    label, and the gateway must echo which one it used."""
+    served = {e["label"] for e in _served_versions()}
+    assert served, "the gateway must serve at least one version"
 
     response = httpx.get(f"{BASE_URL}/v1/models", headers=_auth(), timeout=60.0)
     response.raise_for_status()
 
-    assert _echoed(response) == baseline
+    echoed = _echoed(response)
+    assert echoed in served, f"unpinned echo {echoed!r} is not a served version {served}"
