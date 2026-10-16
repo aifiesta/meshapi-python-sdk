@@ -1,6 +1,5 @@
 import importlib.util
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,9 +15,7 @@ from meshapi_contract.surface import (  # noqa: E402
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC_PATH = Path(
-    os.environ.get("MESHAPI_SPEC_PATH", ROOT.parent / "meshapi-docs" / "api" / "openapi.json")
-)
+SPEC_PATH = ROOT / "contract" / "openapi.public.json"
 BASELINE = ROOT / "contract-baseline.json"
 SPEC_VERSION = (ROOT / ".meshapi-spec-version").read_text().strip()
 
@@ -37,8 +34,6 @@ def actual_json():
 
 @pytest.fixture(scope="module")
 def spec():
-    if not SPEC_PATH.exists():
-        pytest.skip(f"published spec not found at {SPEC_PATH}")
     return json.loads(SPEC_PATH.read_text())
 
 
@@ -79,3 +74,13 @@ def test_baseline_has_no_stale_entries(spec, actual_json):
     rows = set(diff_surface(expected_surface(public_subset(spec)), actual_surface_from_json(actual_json)))
     stale = set(json.loads(BASELINE.read_text())["allow"]) - rows
     assert not stale, sorted(stale)
+
+
+def test_new_spec_param_fails_gate(tmp_path, spec, actual_json):
+    mutated = json.loads(json.dumps(spec))
+    mutated["paths"]["/v1/chat/completions"]["post"].setdefault("parameters", []).append(
+        {"name": "newparam", "in": "query", "schema": {"type": "string"}}
+    )
+    result = _gate(tmp_path, mutated, actual_json)
+    assert result.returncode == 1
+    assert "missing param: POST /v1/chat/completions:newparam" in result.stdout

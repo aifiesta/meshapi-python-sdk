@@ -16,14 +16,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install SDK and gate
-        run: pip install . "meshapi-contract @ git+https://github.com/aifiesta/meshapi-contract.git@v0.2.1"
-
-      - name: Fetch published spec
-        run: curl -fsSL -o openapi.json https://raw.githubusercontent.com/aifiesta/meshapi-docs/main/api/openapi.json
+      - name: Install SDK, gate and pytest
+        run: pip install . pytest "meshapi-contract @ git+https://github.com/aifiesta/meshapi-contract.git@dd520251424f9e204c41ea20a1aa3189b96958d5"
 
       - name: Dump SDK surface
         run: python scripts/dump_surface.py > actual.json
 
       - name: Check drift
-        run: python -m meshapi_contract.gate --spec openapi.json --actual actual.json --spec-version "$(cat .meshapi-spec-version)" --baseline contract-baseline.json
+        run: python -m meshapi_contract.gate --spec contract/openapi.public.json --actual actual.json --spec-version "$(cat .meshapi-spec-version)" --baseline contract-baseline.json
+
+      - name: Acceptance tests
+        run: python -m pytest tests/test_contract_check.py -q

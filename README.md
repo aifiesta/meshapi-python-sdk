@@ -749,4 +749,4 @@ Documentation: [developers.meshapi.ai](https://developers.meshapi.ai)
 
 ## Contract check
 
-CI compares the SDK's typed surface (`python scripts/dump_surface.py`) with the published OpenAPI spec and fails on drift. `contract-baseline.json` lists the known gap between the SDK and the spec; only drift outside that list fails the job. When the SDK gains a field, param or resource, delete the matching rows from the baseline (the baseline test fails on entries that are no longer missing).
+CI compares the SDK's typed surface (`python scripts/dump_surface.py`) with the committed public OpenAPI snapshot (`contract/openapi.public.json`, refreshed by the release orchestrator) and fails on drift. `contract-baseline.json` lists the known gap between the SDK and the spec; only drift outside that list fails the job. When the SDK gains a field, param or resource, delete the matching rows from the baseline (the baseline test fails on entries that are no longer missing).
