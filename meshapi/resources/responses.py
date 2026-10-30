@@ -3,7 +3,7 @@ POST /v1/responses/input_tokens."""
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Iterator, Optional
+from typing import Any, AsyncIterator, Dict, Iterator, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -16,18 +16,11 @@ from .._types import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Input token counting — POST /v1/responses/input_tokens
-# ---------------------------------------------------------------------------
-
-
 class ResponsesInputTokensResponse(BaseModel):
-    """Result of counting the input tokens of a Responses request.
-
-    Counting runs no inference and is not billed.
+    """Result of ``POST /v1/responses/input_tokens``.
 
     Attributes:
-        object: Object type, typically ``"response.input_tokens"``.
+        object: Object type, ``"response.input_tokens"``.
         input_tokens: Number of input tokens the request would consume.
     """
 
@@ -37,9 +30,9 @@ class ResponsesInputTokensResponse(BaseModel):
     input_tokens: int
 
 
-def _input_tokens_body(params: ResponsesParams) -> dict:
+def _input_tokens_body(params: ResponsesParams) -> Dict[str, Any]:
     body = params.model_dump(exclude_none=True)
-    # Counting never streams; drop the flag so the body matches the count route.
+    # Counting never streams; the field has no meaning on this endpoint.
     body.pop("stream", None)
     return body
 
@@ -63,14 +56,16 @@ class ResponsesResource:
     def input_tokens(self, params: ResponsesParams) -> ResponsesInputTokensResponse:
         """Count the input tokens of a Responses request without running it.
 
-        Sends ``POST /v1/responses/input_tokens`` with the same body you would
-        pass to :meth:`create`. No inference runs and nothing is billed.
+        Sends the same body ``create()`` would send to
+        ``POST /v1/responses/input_tokens``. No inference runs and nothing is
+        billed. The count is provider-accurate where the provider offers a
+        native counter and a local estimate otherwise.
 
         Args:
-            params: The Responses request to count. ``stream`` is ignored.
+            params: The Responses request to count.
 
         Returns:
-            A :class:`ResponsesInputTokensResponse` with ``input_tokens``.
+            The input token count.
         """
         data = self._http.post("/v1/responses/input_tokens", _input_tokens_body(params))
         return ResponsesInputTokensResponse.model_validate(data)
@@ -111,15 +106,14 @@ class AsyncResponsesResource:
     async def input_tokens(self, params: ResponsesParams) -> ResponsesInputTokensResponse:
         """Count the input tokens of a Responses request without running it.
 
-        Async variant of :meth:`ResponsesResource.input_tokens`. Sends
-        ``POST /v1/responses/input_tokens``; no inference runs and nothing is
-        billed.
+        Async variant of :meth:`ResponsesResource.input_tokens`. No inference
+        runs and nothing is billed.
 
         Args:
-            params: The Responses request to count. ``stream`` is ignored.
+            params: The Responses request to count.
 
         Returns:
-            A :class:`ResponsesInputTokensResponse` with ``input_tokens``.
+            The input token count.
         """
         data = await self._http.post(
             "/v1/responses/input_tokens", _input_tokens_body(params)
